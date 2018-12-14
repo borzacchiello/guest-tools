@@ -49,8 +49,8 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="trampoline.asm">
+    <MASM Include="trampoline.asm">
       <Filter>File di origine</Filter>
-    </None>
+    </MASM>
   </ItemGroup>
 </Project>

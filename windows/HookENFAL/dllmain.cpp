@@ -64,7 +64,7 @@ static void InterceptVirtualAlloc(unsigned long eax, unsigned long ebx, unsigned
 {
 	address_t1 = eax;
 
-	Message("InterceptVirtualAlloc triggered, ADDRESS: %ld\n", address_t1);
+	Message("InterceptVirtualAlloc triggered, ADDRESS: %08x\n", address_t1);
 	RestoreData((LPVOID)ADDRESS_VIRTUAL_ALLOC, oldInterceptVirtualAlloc, 18);
 }
 
@@ -84,6 +84,11 @@ static void ThreadInitializationFinished(unsigned long eax, unsigned long ebx, u
 	Message("Thread initialization phase finished. Entering the main loop. Hooking library functions.\n");
 	RestoreData((LPVOID)(address_t1 + OFFSET_THREAD_MAIN_LOOP), oldThreadInitializationFinished, 18);
 	HookDynamicFunction("wininet", "InternetOpenA", (funcpointer)&HookInternetOpenA, oldHookInternetOpenA);
+	HookDynamicFunction("wininet", "InternetOpenUrlA", (funcpointer)&HookInternetOpenUrlA, oldHookInternetOpenUrlA);
+	HookDynamicFunction("wininet", "InternetCloseHandle", (funcpointer)&HookInternetCloseHandle, OldHookInternetCloseHandle);
+	HookDynamicFunction("wininet", "HttpOpenRequestA", (funcpointer)&HookHttpOpenRequestA, OldHookHttpOpenRequestA);
+	HookDynamicFunction("wininet", "HttpSendRequestA", (funcpointer)&HookHttpSendRequestA, OldHookHttpSendRequestA);
+	HookDynamicFunction("wininet", "InternetReadFile", (funcpointer)&HookInternetReadFile, OldHookInternetReadFile);
 }
 
 // set the hooks of the thread function (using the address leaked by InterceptVirtualAlloc)
