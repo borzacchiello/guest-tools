@@ -26,7 +26,7 @@ HINTERNET WINAPI HookInternetOpenA (
 }
 
 unsigned char oldHookInternetConnectA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
-HINTERNET HookInternetConnectA (
+HINTERNET WINAPI HookInternetConnectA (
 	HINTERNET     hInternet,
 	LPCSTR        lpszServerName,
 	INTERNET_PORT nServerPort,
@@ -132,16 +132,13 @@ BOOL WINAPI HookInternetReadFile(
 {
 	Message("Intercepted InternetReadFile(%p, %p, %d, %p)\n",
 		hFile, lpBuffer, dwNumberOfBytesToRead, lpdwNumberOfBytesRead);
-
-	if (callCounter > 0) 
-		exit(1);
 	
 	*lpdwNumberOfBytesRead = dwNumberOfBytesToRead;
 	memset(lpBuffer, 0, dwNumberOfBytesToRead);
 
 	char buff[50];
 	sprintf(buff, "InternetReadFile_%d", callCounter++);
-	S2EMakeConcolic(lpBuffer, dwNumberOfBytesToRead, buff); // passing a stack variable should be safe
+	S2EMakeConcolic(lpBuffer, dwNumberOfBytesToRead > 10 ? 10 : dwNumberOfBytesToRead, buff); // passing a stack variable should be safe
 
 	return TRUE;
 }
@@ -150,7 +147,7 @@ BOOL WINAPI HookInternetReadFile(
 // ADVAPI32 ***************************************************************************************************
 
 unsigned char OldHookRegOpenKeyExA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
-LSTATUS HookRegOpenKeyExA(
+LSTATUS WINAPI HookRegOpenKeyExA(
 	HKEY   hKey,
 	LPCSTR lpSubKey,
 	DWORD  ulOptions,
@@ -165,7 +162,7 @@ LSTATUS HookRegOpenKeyExA(
 }
 
 unsigned char OldHookRegSetValueExA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
-LSTATUS HookRegSetValueExA(
+LSTATUS WINAPI HookRegSetValueExA(
 	HKEY       hKey,
 	LPCSTR     lpValueName,
 	DWORD      Reserved,
@@ -180,7 +177,7 @@ LSTATUS HookRegSetValueExA(
 }
 
 unsigned char OldHookRegCloseKey[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
-LSTATUS HookRegCloseKey(
+LSTATUS WINAPI HookRegCloseKey(
 	HKEY hKey
 )
 {
@@ -193,7 +190,7 @@ LSTATUS HookRegCloseKey(
 // KERNEL32 ***************************************************************************************************
 
 unsigned char OldHookFindFirstFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
-HANDLE HookFindFirstFileA(
+HANDLE WINAPI HookFindFirstFileA(
 	LPCSTR             lpFileName,
 	LPWIN32_FIND_DATAA lpFindFileData
 )
@@ -205,7 +202,7 @@ HANDLE HookFindFirstFileA(
 }
 
 unsigned char OldHookFindNextFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
-HANDLE HookFindNextFileA(
+HANDLE WINAPI HookFindNextFileA(
 	HANDLE             hFindFile,
 	LPWIN32_FIND_DATAA lpFindFileData
 )
@@ -217,7 +214,7 @@ HANDLE HookFindNextFileA(
 }
 
 unsigned char OldHookFindClose[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
-BOOL HookFindClose(
+BOOL WINAPI HookFindClose(
 	HANDLE hFindFile
 )
 {
@@ -227,49 +224,75 @@ BOOL HookFindClose(
 }
 
 unsigned char OldHookCreateDirectoryA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
-BOOL HookCreateDirectoryA(
+BOOL WINAPI HookCreateDirectoryA(
 	LPCSTR                lpPathName,
 	LPSECURITY_ATTRIBUTES lpSecurityAttributes
 )
 {
 	Message("Intercepted CreateDirectoryA(%s, %08x)\n",
 		lpPathName, lpSecurityAttributes);
-	return TRUE;
+	return FALSE;
 }
 
 unsigned char OldHookRemoveDirectoryA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
-BOOL HookRemoveDirectoryA(
+BOOL WINAPI HookRemoveDirectoryA(
 	LPCSTR lpPathName
 )
 {
 	Message("Intercepted RemoveDirectoryA(%s)\n",
 		lpPathName);
+	return FALSE;
+}
+
+unsigned char OldHookCreateFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+HANDLE WINAPI HookCreateFileA(
+	LPCSTR                lpFileName,
+	DWORD                 dwDesiredAccess,
+	DWORD                 dwShareMode,
+	LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+	DWORD                 dwCreationDisposition,
+	DWORD                 dwFlagsAndAttributes,
+	HANDLE                hTemplateFile
+)
+{
+	Message("Intercepted CreateFileA(%s)\n",
+		lpFileName);
+	return INVALID_HANDLE_VALUE;// (HANDLE)0xDEADCAFE;
+}
+
+unsigned char OldHookCloseHandle[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL WINAPI HookCloseHandle(
+	_In_ HANDLE hObject
+)
+{
+	Message("Intercepted CloseHandle(%08x)\n",
+		hObject);
 	return TRUE;
 }
 
 unsigned char OldHookMoveFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
-BOOL HookMoveFileA(
+BOOL WINAPI HookMoveFileA(
 	LPCSTR lpExistingFileName,
 	LPCSTR lpNewFileName
 )
 {
 	Message("Intercepted MoveFileA(%s, %s)\n",
 		lpExistingFileName, lpNewFileName);
-	return TRUE;
+	return FALSE;
 }
 
 unsigned char OldHookDeleteFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
-BOOL HookDeleteFileA(
+BOOL WINAPI HookDeleteFileA(
 	LPCSTR lpFileName
 )
 {
 	Message("Intercepted DeleteFileA(%s)\n",
 		lpFileName);
-	return TRUE;
+	return FALSE;
 }
 
 unsigned char OldHookGetDriveTypeA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
-UINT HookGetDriveTypeA(
+UINT WINAPI HookGetDriveTypeA(
 	LPCSTR lpRootPathName
 )
 {
@@ -279,14 +302,14 @@ UINT HookGetDriveTypeA(
 }
 
 unsigned char OldHookGetLogicalDrives[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
-DWORD HookGetLogicalDrives()
+DWORD WINAPI HookGetLogicalDrives()
 {
 	Message("Intercepted GetLogicalDrives()\n");
 	return 0; // no drive
 }
 
 unsigned char OldHookWinExec[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
-UINT HookWinExec(
+UINT WINAPI HookWinExec(
 	LPCSTR lpCmdLine,
 	UINT   uCmdShow
 )

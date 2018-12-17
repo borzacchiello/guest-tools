@@ -14,6 +14,9 @@ BOOL executed = false;
 
 #define ADDRESS_HOOK_THREAD 0x4013F7
 #define OFFSET_THREAD_MAIN_LOOP 0x4A9
+#define OFFSET_THREAD_DISPATCH 0x573
+#define OFFSET_THREAD_TO_AVOID 0x599
+#define OFFSET_END_LOOP 0x1099
 
 unsigned long address_t1;
 INT s2eVersion = 0;
@@ -77,11 +80,20 @@ static void InterceptThreadFunction(unsigned long eax, unsigned long ebx, unsign
 	RestoreData((LPVOID)address_t1, oldThreadFunction, 18);
 }
 
+// simple exit
+unsigned char oldDataExit[18] = { 0 };
+static void SimpleExit(unsigned long eax, unsigned long ebx, unsigned long ecx,
+	unsigned long edx, unsigned long edi, unsigned long esi)
+{
+	Message("Uninteresting state.\n");
+	exit(1);
+}
+
 unsigned char oldThreadInitializationFinished[18] = { 0 };
 static void ThreadInitializationFinished(unsigned long eax, unsigned long ebx, unsigned long ecx,
 	unsigned long edx, unsigned long edi, unsigned long esi)
 {
-	Message("Thread initialization phase finished. Entering the main loop. Hooking library functions.\n");
+	Message("Thread initialization phase finished. Entering the main loop. Hooking internet library functions.\n");
 	RestoreData((LPVOID)(address_t1 + OFFSET_THREAD_MAIN_LOOP), oldThreadInitializationFinished, 18);
 
 	HookDynamicFunction("wininet", "InternetOpenA", (funcpointer)&HookInternetOpenA, oldHookInternetOpenA);
@@ -91,6 +103,14 @@ static void ThreadInitializationFinished(unsigned long eax, unsigned long ebx, u
 	HookDynamicFunction("wininet", "HttpOpenRequestA", (funcpointer)&HookHttpOpenRequestA, OldHookHttpOpenRequestA);
 	HookDynamicFunction("wininet", "HttpSendRequestA", (funcpointer)&HookHttpSendRequestA, OldHookHttpSendRequestA);
 	HookDynamicFunction("wininet", "InternetReadFile", (funcpointer)&HookInternetReadFile, OldHookInternetReadFile);
+}
+
+unsigned char oldThreadDispatch[18] = { 0 };
+static void ThreadDispatch(unsigned long eax, unsigned long ebx, unsigned long ecx,
+	unsigned long edx, unsigned long edi, unsigned long esi)
+{
+	Message("Dispatch reached.\n");
+	RestoreData((LPVOID)(address_t1 + OFFSET_THREAD_DISPATCH), oldThreadDispatch, 18);
 
 	HookDynamicFunction("advapi32", "RegOpenKeyExA", (funcpointer)&HookRegOpenKeyExA, OldHookRegOpenKeyExA);
 	HookDynamicFunction("advapi32", "RegSetValueExA", (funcpointer)&HookRegSetValueExA, OldHookRegSetValueExA);
@@ -104,11 +124,21 @@ static void ThreadInitializationFinished(unsigned long eax, unsigned long ebx, u
 	HookDynamicFunction("kernel32", "RemoveDirectoryA", (funcpointer)&HookRemoveDirectoryA, OldHookRemoveDirectoryA);
 	HookDynamicFunction("kernel32", "MoveFileA", (funcpointer)&HookMoveFileA, OldHookMoveFileA);
 	HookDynamicFunction("kernel32", "DeleteFileA", (funcpointer)&HookDeleteFileA, OldHookDeleteFileA);
+	HookDynamicFunction("kernel32", "CreateFileA", (funcpointer)&HookCreateFileA, OldHookCreateFileA);
+	// HookDynamicFunction("kernel32", "CloseHandle", (funcpointer)&HookCloseHandle, OldHookCloseHandle);
 
 	HookDynamicFunction("kernel32", "GetDriveTypeA", (funcpointer)&HookGetDriveTypeA, OldHookGetDriveTypeA);
 	HookDynamicFunction("kernel32", "GetLogicalDrives", (funcpointer)&HookGetLogicalDrives, OldHookGetLogicalDrives);
 
 	HookDynamicFunction("kernel32", "WinExec", (funcpointer)&HookWinExec, OldHookWinExec);
+}
+
+unsigned char oldThreadEnd[18] = { 0 };
+static void ThreadEnd(unsigned long eax, unsigned long ebx, unsigned long ecx,
+	unsigned long edx, unsigned long edi, unsigned long esi)
+{
+	Message("End loop reached.\n");
+	exit(1);
 }
 
 // set the hooks of the thread function (using the address leaked by InterceptVirtualAlloc)
@@ -122,6 +152,12 @@ static void WriteThreadHook(unsigned long eax, unsigned long ebx, unsigned long 
 		(funcpointer)address_t1, oldThreadFunction);
 	HookInstruction((funcpointer)(address_t1 + OFFSET_THREAD_MAIN_LOOP), (funcpointer)&ThreadInitializationFinished,
 		(funcpointer)(address_t1 + OFFSET_THREAD_MAIN_LOOP), oldThreadInitializationFinished);
+	HookInstruction((funcpointer)(address_t1 + OFFSET_THREAD_DISPATCH), (funcpointer)&ThreadDispatch,
+		(funcpointer)(address_t1 + OFFSET_THREAD_DISPATCH), oldThreadDispatch);
+	HookInstruction((funcpointer)(address_t1 + OFFSET_THREAD_TO_AVOID), (funcpointer)&SimpleExit,
+		(funcpointer)(address_t1 + OFFSET_THREAD_TO_AVOID), oldDataExit);
+	HookInstruction((funcpointer)(address_t1 + OFFSET_END_LOOP), (funcpointer)&ThreadEnd,
+		(funcpointer)(address_t1 + OFFSET_END_LOOP), oldThreadEnd);
 }
 
 // *************************************************************************************************
