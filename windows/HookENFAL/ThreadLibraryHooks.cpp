@@ -6,7 +6,7 @@
 /// Keep track of dummy Internet handles that we've created
 static std::set<HINTERNET> dummyHandles;
 
-
+// WININET ****************************************************************************************************
 unsigned char oldHookInternetOpenA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 HINTERNET WINAPI HookInternetOpenA (
 	LPCSTR lpszAgent,
@@ -25,7 +25,7 @@ HINTERNET WINAPI HookInternetOpenA (
 	return resourceHandle;
 }
 
-unsigned char oldHookInternetConnect[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+unsigned char oldHookInternetConnectA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 HINTERNET HookInternetConnectA (
 	HINTERNET     hInternet,
 	LPCSTR        lpszServerName,
@@ -37,7 +37,7 @@ HINTERNET HookInternetConnectA (
 	DWORD_PTR     dwContext
 )
 {
-	Message("Intercepted HookInternetConnectA(%p, %s, %hu, %s, %s, %d, &d, %p)",
+	Message("Intercepted InternetConnectA(%p, %s, %hu, %s, %s, %d, &d, %p)",
 		hInternet, lpszServerName, nServerPort, lpszUserName, lpszPassword, dwService, dwFlags, dwContext);
 	HINTERNET resourceHandle = (HINTERNET)malloc(sizeof(HINTERNET));
 	// Record the dummy handle so we can clean up afterwards
@@ -58,13 +58,6 @@ HINTERNET WINAPI HookInternetOpenUrlA(
 	Message("Intercepted InternetOpenUrlA(%p, %s, %s, 0x%x, 0x%x, %p)\n",
 		hInternet, lpszUrl, lpszHeaders, dwHeadersLength, dwFlags, dwContext);
 
-	// UINT8 returnResource = S2EConcolicChar("hInternet", 1);
-
-	// Explore the program when InternetOpenUrlA "succeeds" by returning a
-	// dummy resource handle. Because we know that the resource handle is
-	// never used, we don't have to do anything fancy to create it.
-	// However, we will need to keep track of it so we can free it when the
-	// handle is closed.
 	HINTERNET resourceHandle = (HINTERNET)malloc(sizeof(HINTERNET));
 
 	// Record the dummy handle so we can clean up afterwards
@@ -123,7 +116,7 @@ BOOL WINAPI HookHttpSendRequestA(
 	DWORD     dwOptionalLength
 ) 
 {
-	Message("Intercepted HookHttpSendRequestA(%p, %s, %d, %d)\n",
+	Message("Intercepted HttpSendRequestA(%p, %s, %d, %d)\n",
 		hRequest, lpszHeaders, dwHeadersLength, dwOptionalLength);
 	return TRUE;
 }
@@ -137,7 +130,7 @@ BOOL WINAPI HookInternetReadFile(
 	LPDWORD   lpdwNumberOfBytesRead
 ) 
 {
-	Message("Intercepted HookInternetReadFile(%p, %p, %d, %p)\n",
+	Message("Intercepted InternetReadFile(%p, %p, %d, %p)\n",
 		hFile, lpBuffer, dwNumberOfBytesToRead, lpdwNumberOfBytesRead);
 
 	if (callCounter > 0) 
@@ -153,3 +146,154 @@ BOOL WINAPI HookInternetReadFile(
 	return TRUE;
 }
 
+// ************************************************************************************************************
+// ADVAPI32 ***************************************************************************************************
+
+unsigned char OldHookRegOpenKeyExA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+LSTATUS HookRegOpenKeyExA(
+	HKEY   hKey,
+	LPCSTR lpSubKey,
+	DWORD  ulOptions,
+	REGSAM samDesired,
+	PHKEY  phkResult
+)
+{
+	*phkResult = (HKEY)0xDEADBEEF; // dummy handle
+	Message("Intercepted RegOpenKeyExA(%08x, %s, %d)\n",
+		hKey, lpSubKey, ulOptions);
+	return ERROR_SUCCESS;
+}
+
+unsigned char OldHookRegSetValueExA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+LSTATUS HookRegSetValueExA(
+	HKEY       hKey,
+	LPCSTR     lpValueName,
+	DWORD      Reserved,
+	DWORD      dwType,
+	const BYTE *lpData,
+	DWORD      cbData
+)
+{
+	Message("Intercepted RegSetValueExA(%08x, %s)\n",
+		hKey, lpValueName);
+	return ERROR_SUCCESS;
+}
+
+unsigned char OldHookRegCloseKey[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+LSTATUS HookRegCloseKey(
+	HKEY hKey
+)
+{
+	Message("Intercepted RegCloseKey(%08x)\n",
+		hKey);
+	return ERROR_SUCCESS;
+}
+
+// ************************************************************************************************************
+// KERNEL32 ***************************************************************************************************
+
+unsigned char OldHookFindFirstFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+HANDLE HookFindFirstFileA(
+	LPCSTR             lpFileName,
+	LPWIN32_FIND_DATAA lpFindFileData
+)
+{
+	Message("Intercepted FindFirstFileA(%s, %08x)\n", 
+		lpFileName, lpFindFileData);
+
+	return INVALID_HANDLE_VALUE; // fail
+}
+
+unsigned char OldHookFindNextFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+HANDLE HookFindNextFileA(
+	HANDLE             hFindFile,
+	LPWIN32_FIND_DATAA lpFindFileData
+)
+{
+	Message("Intercepted FindNextFileA(%08x, %08x)\n",
+		hFindFile, lpFindFileData);
+
+	return 0x0; // fail
+}
+
+unsigned char OldHookFindClose[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL HookFindClose(
+	HANDLE hFindFile
+)
+{
+	Message("Intercepted FindClose(%08x)\n",
+		hFindFile);
+	return TRUE;
+}
+
+unsigned char OldHookCreateDirectoryA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL HookCreateDirectoryA(
+	LPCSTR                lpPathName,
+	LPSECURITY_ATTRIBUTES lpSecurityAttributes
+)
+{
+	Message("Intercepted CreateDirectoryA(%s, %08x)\n",
+		lpPathName, lpSecurityAttributes);
+	return TRUE;
+}
+
+unsigned char OldHookRemoveDirectoryA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL HookRemoveDirectoryA(
+	LPCSTR lpPathName
+)
+{
+	Message("Intercepted RemoveDirectoryA(%s)\n",
+		lpPathName);
+	return TRUE;
+}
+
+unsigned char OldHookMoveFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL HookMoveFileA(
+	LPCSTR lpExistingFileName,
+	LPCSTR lpNewFileName
+)
+{
+	Message("Intercepted MoveFileA(%s, %s)\n",
+		lpExistingFileName, lpNewFileName);
+	return TRUE;
+}
+
+unsigned char OldHookDeleteFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL HookDeleteFileA(
+	LPCSTR lpFileName
+)
+{
+	Message("Intercepted DeleteFileA(%s)\n",
+		lpFileName);
+	return TRUE;
+}
+
+unsigned char OldHookGetDriveTypeA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+UINT HookGetDriveTypeA(
+	LPCSTR lpRootPathName
+)
+{
+	Message("Intercepted GetDriveTypeA(%s)\n",
+		lpRootPathName);
+	return DRIVE_UNKNOWN;
+}
+
+unsigned char OldHookGetLogicalDrives[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+DWORD HookGetLogicalDrives()
+{
+	Message("Intercepted GetLogicalDrives()\n");
+	return 0; // no drive
+}
+
+unsigned char OldHookWinExec[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+UINT HookWinExec(
+	LPCSTR lpCmdLine,
+	UINT   uCmdShow
+)
+{
+	Message("HookWinExec(%s, %d)\n",
+		lpCmdLine, uCmdShow);
+	return 32;
+}
+
+// ************************************************************************************************************

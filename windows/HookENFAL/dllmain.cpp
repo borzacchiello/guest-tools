@@ -30,20 +30,20 @@ static DWORD HookGetExplorerPid()
 }
 
 // avoid SetReg
-unsigned char oldSetReg[7] = { 0 };
-static LSTATUS HookSetReg()
+unsigned char oldSetReg_prethread[7] = { 0 };
+static LSTATUS HookSetReg_prethread()
 {
 	Message("HookSetReg triggered\n");
-	RestoreData((LPVOID)GetProcAddress(GetModuleHandleA("advapi32"), "RegSetValueExA"), oldSetReg, 7);
+	RestoreData((LPVOID)GetProcAddress(GetModuleHandleA("advapi32"), "RegSetValueExA"), oldSetReg_prethread, 7);
 	return 1;
 }
 
 // avoid CloseReg (crash otherwise)
-unsigned char oldCloseReg[7] = { 0 };
-static LSTATUS HookCloseReg()
+unsigned char oldCloseReg_prethread[7] = { 0 };
+static LSTATUS HookCloseReg_prethread()
 {
 	Message("HookCloseReg triggered\n");
-	RestoreData((LPVOID)GetProcAddress(GetModuleHandleA("advapi32"), "RegCloseKey"), oldCloseReg, 7);
+	RestoreData((LPVOID)GetProcAddress(GetModuleHandleA("advapi32"), "RegCloseKey"), oldCloseReg_prethread, 7);
 	return 1;
 }
 
@@ -83,12 +83,32 @@ static void ThreadInitializationFinished(unsigned long eax, unsigned long ebx, u
 {
 	Message("Thread initialization phase finished. Entering the main loop. Hooking library functions.\n");
 	RestoreData((LPVOID)(address_t1 + OFFSET_THREAD_MAIN_LOOP), oldThreadInitializationFinished, 18);
+
 	HookDynamicFunction("wininet", "InternetOpenA", (funcpointer)&HookInternetOpenA, oldHookInternetOpenA);
 	HookDynamicFunction("wininet", "InternetOpenUrlA", (funcpointer)&HookInternetOpenUrlA, oldHookInternetOpenUrlA);
+	HookDynamicFunction("wininet", "InternetConnectA", (funcpointer)&HookInternetConnectA, oldHookInternetConnectA);
 	HookDynamicFunction("wininet", "InternetCloseHandle", (funcpointer)&HookInternetCloseHandle, OldHookInternetCloseHandle);
 	HookDynamicFunction("wininet", "HttpOpenRequestA", (funcpointer)&HookHttpOpenRequestA, OldHookHttpOpenRequestA);
 	HookDynamicFunction("wininet", "HttpSendRequestA", (funcpointer)&HookHttpSendRequestA, OldHookHttpSendRequestA);
 	HookDynamicFunction("wininet", "InternetReadFile", (funcpointer)&HookInternetReadFile, OldHookInternetReadFile);
+
+	HookDynamicFunction("advapi32", "RegOpenKeyExA", (funcpointer)&HookRegOpenKeyExA, OldHookRegOpenKeyExA);
+	HookDynamicFunction("advapi32", "RegSetValueExA", (funcpointer)&HookRegSetValueExA, OldHookRegSetValueExA);
+	HookDynamicFunction("advapi32", "RegCloseKey", (funcpointer)&HookRegCloseKey, OldHookRegCloseKey);
+
+	HookDynamicFunction("kernel32", "FindFirstFileA", (funcpointer)&HookFindFirstFileA, OldHookFindFirstFileA);
+	HookDynamicFunction("kernel32", "FindNextFileA", (funcpointer)&HookFindNextFileA, OldHookFindNextFileA);
+	HookDynamicFunction("kernel32", "FindClose", (funcpointer)&HookFindClose, OldHookFindClose);
+
+	HookDynamicFunction("kernel32", "CreateDirectoryA", (funcpointer)&HookCreateDirectoryA, OldHookCreateDirectoryA);
+	HookDynamicFunction("kernel32", "RemoveDirectoryA", (funcpointer)&HookRemoveDirectoryA, OldHookRemoveDirectoryA);
+	HookDynamicFunction("kernel32", "MoveFileA", (funcpointer)&HookMoveFileA, OldHookMoveFileA);
+	HookDynamicFunction("kernel32", "DeleteFileA", (funcpointer)&HookDeleteFileA, OldHookDeleteFileA);
+
+	HookDynamicFunction("kernel32", "GetDriveTypeA", (funcpointer)&HookGetDriveTypeA, OldHookGetDriveTypeA);
+	HookDynamicFunction("kernel32", "GetLogicalDrives", (funcpointer)&HookGetLogicalDrives, OldHookGetLogicalDrives);
+
+	HookDynamicFunction("kernel32", "WinExec", (funcpointer)&HookWinExec, OldHookWinExec);
 }
 
 // set the hooks of the thread function (using the address leaked by InterceptVirtualAlloc)
@@ -137,8 +157,8 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 			(funcpointer)ADDRESS_VIRTUAL_ALLOC, oldInterceptVirtualAlloc);
 		HookInstruction((funcpointer)ADDRESS_HOOK_THREAD, (funcpointer)&WriteThreadHook,
 			(funcpointer)ADDRESS_HOOK_THREAD, oldWriteThreadHook);
-		HookDynamicFunction("advapi32", "RegSetValueExA", (funcpointer)&HookSetReg, oldSetReg);
-		HookDynamicFunction("advapi32", "RegCloseKey", (funcpointer)&HookCloseReg, oldCloseReg);
+		HookDynamicFunction("advapi32", "RegSetValueExA", (funcpointer)&HookSetReg_prethread, oldSetReg_prethread);
+		HookDynamicFunction("advapi32", "RegCloseKey", (funcpointer)&HookCloseReg_prethread, oldCloseReg_prethread);
 		Message("Patch completed\n");
 		executed = true;
 	}
