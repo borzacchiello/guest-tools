@@ -1,11 +1,14 @@
 // dllmain.cpp : Definisce il punto di ingresso per l'applicazione DLL.
 #include "stdafx.h"
 #include "Util.h"
+#include "ENFALPlugin.h"
 #include "ThreadLibraryHooks.h"
 
 #include <iostream>
 
 BOOL executed = false;
+
+#define ENFAL_PLUGIN 1
 
 #define ADDRESS_GET_EXPLORER_PID 0x402550
 #define ADDRESS_SKIP_REMOTE_THREAD 0x402448
@@ -17,6 +20,8 @@ BOOL executed = false;
 #define OFFSET_THREAD_DISPATCH 0x573
 #define OFFSET_THREAD_TO_AVOID 0x599
 #define OFFSET_END_LOOP 0x1099
+
+#define OFFSET_JOLLY 0x7AF
 
 unsigned long address_t1;
 INT s2eVersion = 0;
@@ -66,7 +71,13 @@ static void InterceptVirtualAlloc(unsigned long eax, unsigned long ebx, unsigned
 	unsigned long edx, unsigned long edi, unsigned long esi)
 {
 	address_t1 = eax;
+#if ENFAL_PLUGIN
+	EnfalGuestCommand command;
+	command.cmd = NOTIFY_THREAD_ADDRESS;
+	command.thread_address.address = address_t1;
 
+	S2EInvokePlugin("ENFAL", &command, sizeof(command));
+#endif
 	Message("InterceptVirtualAlloc triggered, ADDRESS: %08x\n", address_t1);
 	RestoreData((LPVOID)ADDRESS_VIRTUAL_ALLOC, oldInterceptVirtualAlloc, 18);
 }
@@ -78,15 +89,6 @@ static void InterceptThreadFunction(unsigned long eax, unsigned long ebx, unsign
 {
 	Message("Thread function triggered\n");
 	RestoreData((LPVOID)address_t1, oldThreadFunction, 18);
-}
-
-// simple exit
-unsigned char oldDataExit[18] = { 0 };
-static void SimpleExit(unsigned long eax, unsigned long ebx, unsigned long ecx,
-	unsigned long edx, unsigned long edi, unsigned long esi)
-{
-	Message("Uninteresting state.\n");
-	exit(1);
 }
 
 unsigned char oldThreadInitializationFinished[18] = { 0 };
@@ -133,11 +135,12 @@ static void ThreadDispatch(unsigned long eax, unsigned long ebx, unsigned long e
 	HookDynamicFunction("kernel32", "WinExec", (funcpointer)&HookWinExec, OldHookWinExec);
 }
 
-unsigned char oldThreadEnd[18] = { 0 };
-static void ThreadEnd(unsigned long eax, unsigned long ebx, unsigned long ecx,
+unsigned char oldJolly[18] = { 0 };
+static void Jolly(unsigned long eax, unsigned long ebx, unsigned long ecx,
 	unsigned long edx, unsigned long edi, unsigned long esi)
 {
-	Message("End loop reached.\n");
+	Message("JOLLY\n");
+	Message((char*)esi);
 	exit(1);
 }
 
@@ -154,10 +157,9 @@ static void WriteThreadHook(unsigned long eax, unsigned long ebx, unsigned long 
 		(funcpointer)(address_t1 + OFFSET_THREAD_MAIN_LOOP), oldThreadInitializationFinished);
 	HookInstruction((funcpointer)(address_t1 + OFFSET_THREAD_DISPATCH), (funcpointer)&ThreadDispatch,
 		(funcpointer)(address_t1 + OFFSET_THREAD_DISPATCH), oldThreadDispatch);
-	HookInstruction((funcpointer)(address_t1 + OFFSET_THREAD_TO_AVOID), (funcpointer)&SimpleExit,
-		(funcpointer)(address_t1 + OFFSET_THREAD_TO_AVOID), oldDataExit);
-	HookInstruction((funcpointer)(address_t1 + OFFSET_END_LOOP), (funcpointer)&ThreadEnd,
-		(funcpointer)(address_t1 + OFFSET_END_LOOP), oldThreadEnd);
+	//HookInstruction((funcpointer)(address_t1 + OFFSET_JOLLY), (funcpointer)&Jolly,
+	//	(funcpointer)(address_t1 + OFFSET_JOLLY), oldJolly);
+
 }
 
 // *************************************************************************************************
