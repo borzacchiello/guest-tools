@@ -116,8 +116,19 @@ BOOL WINAPI HookHttpSendRequestA(
 	DWORD     dwOptionalLength
 ) 
 {
-	Message("Intercepted HttpSendRequestA(%p, %s, %d, %d)\n",
-		hRequest, lpszHeaders, dwHeadersLength, dwOptionalLength);
+	S2EGetExample(lpOptional, dwOptionalLength);
+
+	char* buff = (char*)malloc(sizeof(char) * 2 * dwOptionalLength + 1);
+	buff[sizeof(char) * 2 * dwOptionalLength] = NULL;
+
+	for (int i = 0; i < dwOptionalLength; ++i) {
+		sprintf(buff + 2 * i, "%02X", ((char*)(lpOptional))[i]);
+	}
+
+	Message("Intercepted HttpSendRequestA(%p, %s, %d, %s, %d)\n",
+		hRequest, lpszHeaders, dwHeadersLength, buff, dwOptionalLength);
+	
+	free(buff);
 	return TRUE;
 }
 
@@ -136,14 +147,14 @@ BOOL WINAPI HookInternetReadFile(
 	*lpdwNumberOfBytesRead = dwNumberOfBytesToRead;
 	memset(lpBuffer, 0, dwNumberOfBytesToRead);
 
-	if (callCounter == 0) {
+	if ( true ) {//callCounter == 0 || callCounter == 4) {
 		char buff[50];
 		char* inbuff = (char*)lpBuffer;
-		sprintf(buff, "InternetReadFile_%d", callCounter++);
-		S2EMakeConcolic(inbuff, 16, buff);   // passing a stack variable should be safe
-		S2EAssume(inbuff[8] == (20 ^ 0x45)); // otherwise, symbolic write...
+		sprintf(buff, "InternetReadFile_%d", callCounter);
+		S2EMakeConcolic(inbuff, 50, buff);   // passing a stack variable should be safe
+		S2EAssume(inbuff[8] == (80 ^ 0x45)); // otherwise, symbolic write...
 	}
-
+	callCounter++;
 	return TRUE;
 }
 
@@ -319,7 +330,7 @@ UINT WINAPI HookWinExec(
 )
 {
 	Message("HookWinExec(%s, %d)\n",
-		lpCmdLine, uCmdShow);
+		"", 0); // lpCmdLine, uCmdShow);
 	return 32;
 }
 
