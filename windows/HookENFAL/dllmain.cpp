@@ -133,6 +133,8 @@ static void ThreadDispatch(unsigned long eax, unsigned long ebx, unsigned long e
 	HookDynamicFunction("kernel32", "GetLogicalDrives", (funcpointer)&HookGetLogicalDrives, OldHookGetLogicalDrives);
 
 	HookDynamicFunction("kernel32", "WinExec", (funcpointer)&HookWinExec, OldHookWinExec);
+
+	HookDynamicFunction("ws2_32", "htons", (funcpointer)&HookHtons, OldHookHtons);
 }
 
 unsigned char oldJolly[18] = { 0 };

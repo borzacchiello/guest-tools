@@ -16,7 +16,7 @@ HINTERNET WINAPI HookInternetOpenA (
 	DWORD  dwFlags
 )
 {
-	Message("HookInternetOpenA intercepted. Agent: %s\n", lpszAgent);
+	Message("Intercepted HookInternetOpenA. Agent: %s\n", lpszAgent);
 	HINTERNET resourceHandle = (HINTERNET)malloc(sizeof(HINTERNET));
 
 	// Record the dummy handle so we can clean up afterwards
@@ -147,7 +147,7 @@ BOOL WINAPI HookInternetReadFile(
 	*lpdwNumberOfBytesRead = dwNumberOfBytesToRead;
 	memset(lpBuffer, 0, dwNumberOfBytesToRead);
 
-	if ( true ) {//callCounter == 0 || callCounter == 4) {
+	if ( callCounter == 0 || callCounter == 4 || callCounter == 8) {
 		char buff[50];
 		char* inbuff = (char*)lpBuffer;
 		sprintf(buff, "InternetReadFile_%d", callCounter);
@@ -171,8 +171,7 @@ LSTATUS WINAPI HookRegOpenKeyExA(
 )
 {
 	*phkResult = (HKEY)0xDEADBEEF; // dummy handle
-	Message("Intercepted RegOpenKeyExA(%08x, %s, %d)\n",
-		hKey, lpSubKey, ulOptions);
+	Message("Intercepted RegOpenKeyExA\n");
 	return ERROR_SUCCESS;
 }
 
@@ -186,8 +185,13 @@ LSTATUS WINAPI HookRegSetValueExA(
 	DWORD      cbData
 )
 {
-	Message("Intercepted RegSetValueExA(%08x, %s)\n",
-		hKey, lpValueName);
+	if (S2EIsSymbolic((LPVOID)lpValueName, 1)) {
+		Message("Intercepted RegSetValueExA\n");
+		S2EPrintExpression(*lpValueName, "RegSetValueExA lpValueName");
+		Message("END SYMBOL");
+	}
+	else
+		Message("Intercepted RegSetValueExA(%s)\n", lpValueName);
 	return ERROR_SUCCESS;
 }
 
@@ -210,9 +214,13 @@ HANDLE WINAPI HookFindFirstFileA(
 	LPWIN32_FIND_DATAA lpFindFileData
 )
 {
-	Message("Intercepted FindFirstFileA(%s, %08x)\n", 
-		lpFileName, lpFindFileData);
-
+	if (S2EIsSymbolic((LPVOID)lpFileName, 1)) {
+		Message("Intercepted FindFirstFileA\n");
+		S2EPrintExpression(*lpFileName, "FindFirstFileA FileName");
+		Message("END SYMBOL");
+	}
+	else
+		Message("Intercepted FindFirstFileA(%s)\n", lpFileName);
 	return INVALID_HANDLE_VALUE; // fail
 }
 
@@ -222,9 +230,7 @@ HANDLE WINAPI HookFindNextFileA(
 	LPWIN32_FIND_DATAA lpFindFileData
 )
 {
-	Message("Intercepted FindNextFileA(%08x, %08x)\n",
-		hFindFile, lpFindFileData);
-
+	Message("Intercepted FindNextFileA\n");
 	return 0x0; // fail
 }
 
@@ -233,8 +239,7 @@ BOOL WINAPI HookFindClose(
 	HANDLE hFindFile
 )
 {
-	Message("Intercepted FindClose(%08x)\n",
-		hFindFile);
+	Message("Intercepted FindClose\n");
 	return TRUE;
 }
 
@@ -244,8 +249,13 @@ BOOL WINAPI HookCreateDirectoryA(
 	LPSECURITY_ATTRIBUTES lpSecurityAttributes
 )
 {
-	Message("Intercepted CreateDirectoryA(%s, %08x)\n",
-		lpPathName, lpSecurityAttributes);
+	if (S2EIsSymbolic((LPVOID)lpPathName, 1)) {
+		Message("Intercepted CreateDirectoryA\n");
+		S2EPrintExpression(*lpPathName, "CreateDirectoryA PathName");
+		Message("END SYMBOL");
+	}
+	else
+		Message("Intercepted CreateDirectoryA(%s)\n", lpPathName);
 	return FALSE;
 }
 
@@ -254,8 +264,13 @@ BOOL WINAPI HookRemoveDirectoryA(
 	LPCSTR lpPathName
 )
 {
-	Message("Intercepted RemoveDirectoryA(%s)\n",
-		lpPathName);
+	if (S2EIsSymbolic((LPVOID)lpPathName, 1)) {
+		Message("Intercepted RemoveDirectoryA\n");
+		S2EPrintExpression(*lpPathName, "RemoveDirectoryA PathName");
+		Message("END SYMBOL");
+	} 
+	else 
+		Message("Intercepted RemoveDirectoryA(%s)\n", lpPathName);
 	return FALSE;
 }
 
@@ -270,8 +285,13 @@ HANDLE WINAPI HookCreateFileA(
 	HANDLE                hTemplateFile
 )
 {
-	Message("Intercepted CreateFileA(%s)\n",
-		lpFileName);
+	if (S2EIsSymbolic((LPVOID)lpFileName, 1)) {
+		Message("Intercepted CreateFileA\n");
+		S2EPrintExpression(*lpFileName, "CreateFileA FileName");
+		Message("END SYMBOL");
+	} 
+	else
+		Message("Intercepted CreateFileA(%s)\n", lpFileName);
 	return INVALID_HANDLE_VALUE;// (HANDLE)0xDEADCAFE;
 }
 
@@ -291,8 +311,14 @@ BOOL WINAPI HookMoveFileA(
 	LPCSTR lpNewFileName
 )
 {
-	Message("Intercepted MoveFileA(%s, %s)\n",
-		lpExistingFileName, lpNewFileName);
+	if (S2EIsSymbolic((LPVOID)lpExistingFileName, 1) || S2EIsSymbolic((LPVOID)lpNewFileName, 1)) {
+		Message("Intercepted MoveFileA\n");
+		S2EPrintExpression(*lpExistingFileName, "MoveFileA ExistingFileName");
+		S2EPrintExpression(*lpNewFileName, "MoveFileA NewFileName");
+		Message("END SYMBOL");
+	}
+	else
+		Message("Intercepted MoveFileA(%s, %s)\n", lpExistingFileName, lpNewFileName);
 	return FALSE;
 }
 
@@ -301,8 +327,13 @@ BOOL WINAPI HookDeleteFileA(
 	LPCSTR lpFileName
 )
 {
-	Message("Intercepted DeleteFileA(%s)\n",
-		lpFileName);
+	if (S2EIsSymbolic((LPVOID)lpFileName, 1)) {
+		Message("Intercepted DeleteFileA\n");
+		S2EPrintExpression(*lpFileName, "DeleteFileA FileName");
+		Message("END SYMBOL");
+	}
+	else
+		Message("Intercepted DeleteFileA(%s)\n", lpFileName);
 	return FALSE;
 }
 
@@ -311,8 +342,13 @@ UINT WINAPI HookGetDriveTypeA(
 	LPCSTR lpRootPathName
 )
 {
-	Message("Intercepted GetDriveTypeA(%s)\n",
-		lpRootPathName);
+	if (S2EIsSymbolic((LPVOID)lpRootPathName, 1)) {
+		Message("Intercepted GetDriveTypeA\n");
+		S2EPrintExpression(*lpRootPathName, "GetDriveTypeA PathName");
+		Message("END SYMBOL");
+	}
+	else
+		Message("Intercepted GetDriveTypeA(%s)\n", lpRootPathName);
 	return DRIVE_UNKNOWN;
 }
 
@@ -329,9 +365,24 @@ UINT WINAPI HookWinExec(
 	UINT   uCmdShow
 )
 {
-	Message("HookWinExec(%s, %d)\n",
-		"", 0); // lpCmdLine, uCmdShow);
+	if (S2EIsSymbolic((LPVOID)lpCmdLine, 1)) {
+		Message("Intercepted WinExec\n");
+		S2EPrintExpression(*lpCmdLine, "WinExec command");
+		Message("END SYMBOL");
+	}
+	else
+		Message("Intercepted WinExec(%s)\n", lpCmdLine);
 	return 32;
 }
 
 // ************************************************************************************************************
+// ws2_32 *****************************************************************************************************
+unsigned char OldHookHtons[LEN_OPCODES_HOOK_FUNCTION];
+u_short WINAPI HookHtons(
+	u_short hostshort
+)
+{
+	Message("Intercepted htons\n");
+	// return hostshort; // at 0x4035D4, symbolic write
+	return 0;
+}

@@ -2,6 +2,7 @@
 
 #include <windows.h>
 #include <WinInet.h>
+#include <winsock.h>
 
 // WININET ****************************************************************************************************
 extern unsigned char oldHookInternetOpenA[LEN_OPCODES_HOOK_FUNCTION];
@@ -163,3 +164,8 @@ UINT WINAPI HookWinExec(
 );
 
 // ************************************************************************************************************
+// ws2_32 *****************************************************************************************************
+extern unsigned char OldHookHtons[LEN_OPCODES_HOOK_FUNCTION];
+u_short WINAPI HookHtons(
+	u_short hostshort
+);
