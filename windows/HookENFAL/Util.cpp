@@ -179,12 +179,12 @@ void HookDynamicFunction(LPCSTR module_name, LPCSTR function_name, funcpointer f
 {
 	internal = TRUE;
 	funcpointer f = (funcpointer)GetProcAddress(GetModuleHandleA(module_name), function_name);
+	internal = FALSE;
 	if (!f) {
 		Message("GetProcAddress failed. Errorcode: %d\n", GetLastError());
 		exit(1);
 	}
 	HookFunction(f, function_to_load, old_data);
-	internal = FALSE;
 }
 
 // restore old opcodes

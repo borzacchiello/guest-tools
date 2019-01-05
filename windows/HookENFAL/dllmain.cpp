@@ -93,6 +93,11 @@ static void InterceptThreadFunction(unsigned long eax, unsigned long ebx, unsign
 {
 	Message("Thread function triggered\n");
 	RestoreData((LPVOID)address_t1, oldThreadFunction, 18);
+	// log wrappers
+	HookDynamicFunction("kernel32", "LoadLibraryA", (funcpointer)&WrapperLoadLibraryA, OldWrapperLoadLibraryA);
+	// OldGetProcAddress = (funcpointer)GetProcAddress(GetModuleHandleA("kernel32"), "GetProcAddress");
+	HookDynamicFunction("kernel32", "GetProcAddress", (funcpointer)&WrapperGetProcAddress, OldWrapperGetProcAddress);
+	// ************
 }
 
 unsigned char oldThreadInitializationFinished[18] = { 0 };
@@ -165,7 +170,7 @@ static void WriteThreadHook(unsigned long eax, unsigned long ebx, unsigned long 
 		(funcpointer)(address_t1 + OFFSET_THREAD_DISPATCH), oldThreadDispatch);
 	//HookInstruction((funcpointer)(address_t1 + OFFSET_JOLLY), (funcpointer)&Jolly,
 	//	(funcpointer)(address_t1 + OFFSET_JOLLY), oldJolly);
-
+	
 }
 
 // *************************************************************************************************
@@ -202,11 +207,7 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 			(funcpointer)ADDRESS_HOOK_THREAD, oldWriteThreadHook);
 		HookDynamicFunction("advapi32", "RegSetValueExA", (funcpointer)&HookSetReg_prethread, oldSetReg_prethread);
 		HookDynamicFunction("advapi32", "RegCloseKey", (funcpointer)&HookCloseReg_prethread, oldCloseReg_prethread);
-		// log wrappers
-		HookDynamicFunction("kernel32", "LoadLibraryA", (funcpointer)&WrapperLoadLibraryA, OldWrapperLoadLibraryA);
-		OldGetProcAddress = (funcpointer)GetProcAddress(GetModuleHandleA("kernel32"), "GetProcAddress");
-		HookFunction(OldGetProcAddress, (funcpointer)&WrapperGetProcAddress, OldWrapperGetProcAddress);
-		// ************
+
 		Message("Patch completed\n");
 		executed = true;
 	}

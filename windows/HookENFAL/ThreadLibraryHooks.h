@@ -179,7 +179,7 @@ HMODULE WINAPI WrapperLoadLibraryA(
 );
 
 extern unsigned char OldWrapperGetProcAddress[LEN_OPCODES_HOOK_FUNCTION];
-extern funcpointer OldGetProcAddress;
+// extern funcpointer OldGetProcAddress;
 FARPROC WINAPI WrapperGetProcAddress(
 	HMODULE hModule,
 	LPCSTR  lpProcName
