@@ -8,6 +8,7 @@ typedef void(*funcpointer)(void *);
 
 const LPCWSTR fname = L"c:\\Users\\luca\\ENFAL-INFO.txt";
 extern INT s2eVersion;
+extern BOOL internal;
 
 void Message(LPCSTR fmt, ...);
 void HookInstruction(funcpointer instructions_to_patch, funcpointer code_to_load, funcpointer return_address, unsigned char* old_data);

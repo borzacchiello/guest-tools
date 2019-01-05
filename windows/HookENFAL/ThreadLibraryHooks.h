@@ -169,3 +169,18 @@ extern unsigned char OldHookHtons[LEN_OPCODES_HOOK_FUNCTION];
 u_short WINAPI HookHtons(
 	u_short hostshort
 );
+
+// ************************************************************************************************************
+// log only ***************************************************************************************************
+
+extern unsigned char OldWrapperLoadLibraryA[LEN_OPCODES_HOOK_FUNCTION];
+HMODULE WINAPI WrapperLoadLibraryA(
+	LPCSTR lpLibFileName
+);
+
+extern unsigned char OldWrapperGetProcAddress[LEN_OPCODES_HOOK_FUNCTION];
+extern funcpointer OldGetProcAddress;
+FARPROC WINAPI WrapperGetProcAddress(
+	HMODULE hModule,
+	LPCSTR  lpProcName
+);

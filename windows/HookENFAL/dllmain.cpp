@@ -42,7 +42,9 @@ unsigned char oldSetReg_prethread[7] = { 0 };
 static LSTATUS HookSetReg_prethread()
 {
 	Message("HookSetReg triggered\n");
+	internal = TRUE;
 	RestoreData((LPVOID)GetProcAddress(GetModuleHandleA("advapi32"), "RegSetValueExA"), oldSetReg_prethread, 7);
+	internal = FALSE;
 	return 1;
 }
 
@@ -51,7 +53,9 @@ unsigned char oldCloseReg_prethread[7] = { 0 };
 static LSTATUS HookCloseReg_prethread()
 {
 	Message("HookCloseReg triggered\n");
+	internal = TRUE;
 	RestoreData((LPVOID)GetProcAddress(GetModuleHandleA("advapi32"), "RegCloseKey"), oldCloseReg_prethread, 7);
+	internal = FALSE;
 	return 1;
 }
 
@@ -172,7 +176,6 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 	LPVOID lpReserved)
 {
 	if (!executed) {
-
 		// Used by the Message function to decide where to write output to
 		s2eVersion = S2EGetVersion();
 
@@ -199,6 +202,11 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 			(funcpointer)ADDRESS_HOOK_THREAD, oldWriteThreadHook);
 		HookDynamicFunction("advapi32", "RegSetValueExA", (funcpointer)&HookSetReg_prethread, oldSetReg_prethread);
 		HookDynamicFunction("advapi32", "RegCloseKey", (funcpointer)&HookCloseReg_prethread, oldCloseReg_prethread);
+		// log wrappers
+		HookDynamicFunction("kernel32", "LoadLibraryA", (funcpointer)&WrapperLoadLibraryA, OldWrapperLoadLibraryA);
+		OldGetProcAddress = (funcpointer)GetProcAddress(GetModuleHandleA("kernel32"), "GetProcAddress");
+		HookFunction(OldGetProcAddress, (funcpointer)&WrapperGetProcAddress, OldWrapperGetProcAddress);
+		// ************
 		Message("Patch completed\n");
 		executed = true;
 	}

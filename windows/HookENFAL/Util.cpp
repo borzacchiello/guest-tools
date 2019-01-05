@@ -2,6 +2,8 @@
 #include "Util.h"
 #include "trampoline.h"
 
+BOOL internal = FALSE;
+
 ///
 /// Write a message to the S2E log (or stdout).
 ///
@@ -63,7 +65,7 @@ void HookInstruction(funcpointer instructions_to_patch, funcpointer code_to_load
 
 	DWORD dwProtect;
 	if (!VirtualProtect(instructions_to_patch, len_opcodes, PAGE_EXECUTE_READWRITE, &dwProtect)) {
-		Message("VirtualProtect failed\n");
+		Message("VirtualProtect failed. Errorcode: %d\n", GetLastError());
 		exit(1);
 	}
 
@@ -75,7 +77,7 @@ void HookInstruction(funcpointer instructions_to_patch, funcpointer code_to_load
 		len_opcodes,
 		&bytes_written
 	)) {
-		Message("WriteProcessMemory failed\n");
+		Message("WriteProcessMemory failed. Errorcode: %d\n", GetLastError());
 		exit(1);
 	}
 	else if (bytes_written != len_opcodes) {
@@ -91,7 +93,7 @@ void HookInstruction(funcpointer instructions_to_patch, funcpointer code_to_load
 		len_opcodes,
 		&bytes_written
 	)) {
-		Message("WriteProcessMemory failed\n");
+		Message("WriteProcessMemory failed. Errorcode: %d\n", GetLastError());
 		exit(1);
 	}
 	else if (bytes_written != len_opcodes) {
@@ -104,7 +106,7 @@ void HookInstruction(funcpointer instructions_to_patch, funcpointer code_to_load
 		instructions_to_patch,
 		len_opcodes
 	)) {
-		Message("FlushInstructionCache failed\n");
+		Message("FlushInstructionCache failed. Errorcode: %d\n", GetLastError());
 		exit(1);
 	}
 
@@ -127,7 +129,7 @@ void HookFunction(funcpointer address_to_patch, funcpointer function_to_load, un
 
 	DWORD dwProtect;
 	if (!VirtualProtect(address_to_patch, len_opcodes, PAGE_EXECUTE_READWRITE, &dwProtect)) {
-		Message("VirtualProtect failed\n");
+		Message("VirtualProtect failed. Errorcode: %d\n", GetLastError());
 		exit(1);
 	}
 
@@ -139,7 +141,7 @@ void HookFunction(funcpointer address_to_patch, funcpointer function_to_load, un
 		len_opcodes,
 		&bytes_written
 	)) {
-		Message("WriteProcessMemory failed\n");
+		Message("WriteProcessMemory failed. Errorcode: %d\n", GetLastError());
 		exit(1);
 	}
 	else if (bytes_written != len_opcodes) {
@@ -155,7 +157,7 @@ void HookFunction(funcpointer address_to_patch, funcpointer function_to_load, un
 		len_opcodes,
 		&bytes_written
 	)) {
-		Message("WriteProcessMemory failed\n");
+		Message("WriteProcessMemory failed. Errorcode: %d\n", GetLastError());
 		exit(1);
 	}
 	else if (bytes_written != len_opcodes) {
@@ -168,24 +170,27 @@ void HookFunction(funcpointer address_to_patch, funcpointer function_to_load, un
 		address_to_patch,
 		len_opcodes
 	)) {
-		Message("FlushInstructionCache failed\n");
+		Message("FlushInstructionCache failed. Errorcode: %d\n", GetLastError());
 		exit(1);
 	}
 }
 
 void HookDynamicFunction(LPCSTR module_name, LPCSTR function_name, funcpointer function_to_load, unsigned char* old_data)
 {
+	internal = TRUE;
 	funcpointer f = (funcpointer)GetProcAddress(GetModuleHandleA(module_name), function_name);
 	if (!f) {
-		Message("GetProcAddress failed\n");
+		Message("GetProcAddress failed. Errorcode: %d\n", GetLastError());
 		exit(1);
 	}
 	HookFunction(f, function_to_load, old_data);
+	internal = FALSE;
 }
 
 // restore old opcodes
 void RestoreData(LPVOID dst, LPVOID src, DWORD len)
 {
+
 	DWORD bytes_written;
 	if (!WriteProcessMemory(
 		GetCurrentProcess(),
@@ -194,7 +199,7 @@ void RestoreData(LPVOID dst, LPVOID src, DWORD len)
 		len,
 		&bytes_written
 	)) {
-		Message("WriteProcessMemory failed\n");
+		Message("WriteProcessMemory failed. Errorcode: %d\n", GetLastError());
 		exit(1);
 	}
 	else if (bytes_written != len) {
@@ -207,7 +212,7 @@ void RestoreData(LPVOID dst, LPVOID src, DWORD len)
 		dst,
 		len
 	)) {
-		Message("FlushInstructionCache failed\n");
+		Message("FlushInstructionCache failed. Errorcode: %d\n", GetLastError());
 		exit(1);
 	}
 }

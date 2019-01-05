@@ -386,3 +386,40 @@ u_short WINAPI HookHtons(
 	// return hostshort; // at 0x4035D4, symbolic write
 	return 0;
 }
+
+// ************************************************************************************************************
+// log only ***************************************************************************************************
+
+unsigned char OldWrapperLoadLibraryA[LEN_OPCODES_HOOK_FUNCTION];
+HMODULE WINAPI WrapperLoadLibraryA(
+	LPCSTR lpLibFileName
+)
+{
+	internal = TRUE;
+	funcpointer OldloadLibraryA = (funcpointer)GetProcAddress(GetModuleHandleA("kernel32"), "LoadLibraryA");
+	RestoreData((LPVOID)OldloadLibraryA, OldWrapperLoadLibraryA, LEN_OPCODES_HOOK_FUNCTION);
+
+	Message("Intercepted LoadLibraryA(%s)\n", lpLibFileName);
+	HMODULE ris = LoadLibraryA(lpLibFileName);
+
+	HookFunction(OldloadLibraryA, (funcpointer)&WrapperLoadLibraryA, OldWrapperLoadLibraryA);
+	internal = FALSE;
+	return ris;
+}
+
+unsigned char OldWrapperGetProcAddress[LEN_OPCODES_HOOK_FUNCTION];
+funcpointer OldGetProcAddress;
+FARPROC WINAPI WrapperGetProcAddress(
+	HMODULE hModule,
+	LPCSTR  lpProcName
+)
+{
+	RestoreData((LPVOID)OldGetProcAddress, OldWrapperGetProcAddress, LEN_OPCODES_HOOK_FUNCTION);
+
+	if (!internal) Message("Intercepted GetProcAddress(%s)\n", lpProcName);
+	FARPROC ris = GetProcAddress(hModule, lpProcName);
+
+	HookFunction(OldGetProcAddress, (funcpointer)&WrapperGetProcAddress, OldWrapperGetProcAddress);
+	return ris;
+}
+
