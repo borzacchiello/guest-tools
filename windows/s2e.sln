@@ -25,6 +25,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "minimal-inject", "minimal-i
 		{F999B414-1B8E-4D40-9BF0-442560663847} = {F999B414-1B8E-4D40-9BF0-442560663847}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HookDelphi_1", "HookDelphi_1\HookDelphi_1.vcxproj", "{99674526-A872-4EB1-8662-C605DD541F3A}"
+	ProjectSection(ProjectDependencies) = postProject
+		{F999B414-1B8E-4D40-9BF0-442560663847} = {F999B414-1B8E-4D40-9BF0-442560663847}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -97,6 +102,14 @@ Global
 		{23B0928D-77B3-454D-B513-F0334398AAEB}.Release|Win32.Build.0 = Release|Win32
 		{23B0928D-77B3-454D-B513-F0334398AAEB}.Release|x64.ActiveCfg = Release|x64
 		{23B0928D-77B3-454D-B513-F0334398AAEB}.Release|x64.Build.0 = Release|x64
+		{99674526-A872-4EB1-8662-C605DD541F3A}.Debug|Win32.ActiveCfg = Debug|Win32
+		{99674526-A872-4EB1-8662-C605DD541F3A}.Debug|Win32.Build.0 = Debug|Win32
+		{99674526-A872-4EB1-8662-C605DD541F3A}.Debug|x64.ActiveCfg = Debug|x64
+		{99674526-A872-4EB1-8662-C605DD541F3A}.Debug|x64.Build.0 = Debug|x64
+		{99674526-A872-4EB1-8662-C605DD541F3A}.Release|Win32.ActiveCfg = Release|Win32
+		{99674526-A872-4EB1-8662-C605DD541F3A}.Release|Win32.Build.0 = Release|Win32
+		{99674526-A872-4EB1-8662-C605DD541F3A}.Release|x64.ActiveCfg = Release|x64
+		{99674526-A872-4EB1-8662-C605DD541F3A}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

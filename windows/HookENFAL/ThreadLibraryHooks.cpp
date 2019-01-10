@@ -152,7 +152,7 @@ BOOL WINAPI HookInternetReadFile(
 		char* inbuff = (char*)lpBuffer;
 		sprintf(buff, "InternetReadFile_%d", callCounter);
 		S2EMakeConcolic(inbuff, 50, buff);   // passing a stack variable should be safe
-		S2EAssume(inbuff[8] == (80 ^ 0x45)); // otherwise, symbolic write...
+		// S2EAssume(inbuff[8] == (80 ^ 0x45)); // otherwise, symbolic write...
 	}
 	callCounter++;
 	return TRUE;
