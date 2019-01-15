@@ -11,21 +11,98 @@ extern "C" {
 #define ADDR_AFTER_INIT 0x0402027
 #define ADDR_CMD_SWITCH 0x0401068
 #define ADDR_CHECK 0x0402071
+#define ADDR_AFTER_SWITCH 0x0405214
+#define ADDR_AVOID_2 0x04020DE
+
+#define ADDR_AVOID_3 0x040D3B6 
+#define ADDR_TARGET 0x040D3AD
+#define ADDR_FIRST_CMD 0x04010EB
+
+#define ADDR_CMD_4 0x04010EB
 
 BOOL executed = FALSE;
+static volatile BOOL command_ex = FALSE;
 int s2eVersion = 0;
 
-unsigned char oldExit_stub[LEN_OPCODES_HOOK_INSTRUCTION] = { 0 };
-void exit_stub(unsigned long eax, unsigned long ebx, unsigned long ecx,
-	unsigned long edx, unsigned long edi, unsigned long esi)
+unsigned char oldCmd_4[LEN_OPCODES_HOOK_INSTRUCTION] = { 0 };
+void cmd_4()
 {
-	Message("REACHED.\n");
+	Message("In cmd 4.\n");
+	RestoreData((funcpointer)ADDR_CMD_4, oldCmd_4, LEN_OPCODES_HOOK_INSTRUCTION);
+}
+
+unsigned char oldAvoidTMP[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+void avoidTMP() 
+{
+	Message("AVOID TMP.\n");
+#if S2E
+	S2EKillState(0, "avoid tmp");
+#else
 	exit(1);
+#endif
+}
+
+unsigned char oldTargetTMP[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+void targetTMP()
+{
+	Message("TARGET TMP.\n");
+#if S2E
+	S2EKillState(0, "target tmp");
+#else
+	exit(1);
+#endif
+}
+
+unsigned char oldExit_stub[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+void exit_stub()
+{
+	Message("AVOID.\n");
+#if S2E
+	S2EKillState(0, "exit stub");
+#else
+	exit(1);
+#endif
+}
+
+unsigned char oldAfterSwitch[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+void after_switch()
+{
+	if (! command_ex) {
+#if S2E
+		S2EKillState(0, "avoid 1");
+#else
+		exit(1);
+#endif
+	}
+	else {
+		command_ex = FALSE;
+		Message("After switch.\n");
+	}
 }
 
 unsigned char oldGetFilePath[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 int get_file_path_stub() {
 	return 0;
+}
+
+int counter = 0;
+unsigned char oldCmd_switch[LEN_OPCODES_HOOK_INSTRUCTION] = { 0 };
+void cmd_switch(unsigned long eax, unsigned long ebx, unsigned long ecx,
+	unsigned long edx, unsigned long edi, unsigned long esi)
+{
+	Message("In command switch.\n");
+	if (counter > 0) {
+#if S2E
+		S2EKillState(0, "2nd switch");
+#else
+		exit(1);
+#endif
+	}
+	else {
+		command_ex = TRUE;
+		RestoreData((funcpointer)ADDR_CMD_SWITCH, oldCmd_switch, LEN_OPCODES_HOOK_INSTRUCTION);
+		counter++;
+	}
 }
 
 // rendez-vouz *******
@@ -37,6 +114,7 @@ unsigned char oldHook_after_init[LEN_OPCODES_HOOK_INSTRUCTION] = { 0 };
 void hook_after_init(unsigned long eax, unsigned long ebx, unsigned long ecx,
 	unsigned long edx, unsigned long edi, unsigned long esi)
 {
+	HookInstruction((funcpointer)ADDR_CMD_SWITCH, (funcpointer)&cmd_switch, (funcpointer)ADDR_CMD_SWITCH, oldCmd_switch);
 	HookInstruction((funcpointer)ADDR_CHECK, (funcpointer)check_ris, (funcpointer)ADDR_CHECK, oldCheck_ris);
 	RestoreData((funcpointer)ADDR_AFTER_INIT, oldHook_after_init, LEN_OPCODES_HOOK_INSTRUCTION);
 }
@@ -65,8 +143,14 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		Message("Initialization phase.\n");
 
 		HookFunction((funcpointer)GET_FILE_PATH_ADDRESS, (funcpointer)get_file_path_stub, oldGetFilePath);
-		HookInstruction((funcpointer)ADDR_CMD_SWITCH, (funcpointer)&exit_stub, (funcpointer)ADDR_CMD_SWITCH, oldExit_stub);
 #if S2E
+		HookInstruction((funcpointer)ADDR_CMD_4, (funcpointer)cmd_4, (funcpointer)ADDR_CMD_4, oldCmd_4);
+
+		// HookFunction((funcpointer)ADDR_AVOID_3, (funcpointer)avoidTMP,oldAvoidTMP);
+		// HookFunction((funcpointer)ADDR_TARGET, (funcpointer)targetTMP, oldTargetTMP);
+
+		HookFunction((funcpointer)ADDR_AFTER_SWITCH, (funcpointer)after_switch, oldAfterSwitch);
+		HookFunction((funcpointer)ADDR_AVOID_2, (funcpointer)exit_stub, oldExit_stub);
 		HookInstruction((funcpointer)ADDR_AFTER_INIT, (funcpointer)hook_after_init, (funcpointer)ADDR_AFTER_INIT, oldHook_after_init);	
 #endif
 		HookDynamicFunction("ws2_32", "WSAStartup", (funcpointer)WSAStartupHook, oldWSAStartupHook);

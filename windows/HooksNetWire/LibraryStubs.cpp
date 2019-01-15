@@ -30,6 +30,8 @@ INT WSAAPI getaddrinfoHook(
 	return 0;
 }
 
+int i = 0;
+int rets[] = { 0xdeadbeef, 0xcafecafe };
 unsigned char oldSocketHook[LEN_OPCODES_HOOK_FUNCTION];
 SOCKET WSAAPI socketHook(
 	int af,
@@ -37,7 +39,7 @@ SOCKET WSAAPI socketHook(
 	int protocol
 ) {
 	Message("socket called.\n");
-	return 0xdeadbeef;
+	return rets[0];
 }
 
 unsigned char oldConnectHook[LEN_OPCODES_HOOK_FUNCTION];
@@ -114,18 +116,34 @@ int WSAAPI recvHook(
 #if S2E
 	if (S2EIsSymbolic((PVOID)&len, 4)) {
 		S2EPrintExpression(len, "symb_len");
-		// S2EKillState(0, "ciao");
 		S2EConcretize(&len, 4);
 		Message("Concretizing len to %d\n", len);
 	}
+#endif
 	memset(buf, 0, len);
+	if (callCounter == 0) {
+		callCounter++;
+		buf[0] = 0x41;
+		return len;
+	}
+	if (callCounter == 1) {
+		callCounter++;
+		// extracted using SE (TARGET: 0x040D3AD; AVOID: 0x040D3B6). First recv {0x41, 0x0, 0x0, 0x0}
+		unsigned char tmp[] = { 0x5, 0x88, 0x50, 0x19, 0x8, 0x54, 0x8d, 0xc0, 0xd0, 0x88, 0x50, 0x1a,  \
+			0x7, 0x5a, 0x85, 0xc0, 0xd0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x3, 0x11, 0x3c, 0x2, \
+			0xa9, 0x1e, 0x19, 0x6, 0x1b, 0xd1, 0x32, 0xf1, 0xbe, 0x78, 0x16, 0x61, 0x58, 0x63, 0xe2,   \
+			0x0, 0x9e, 0x3c, 0x87, 0x8, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,    \
+			0x0, 0x0, 0x0, 0x0 };
+		memcpy(buf, tmp, 0x41);
+		return len;
+	}
+#if S2E
 	char name[50];
 	sprintf(name, "recv_%d", callCounter++);
 	S2EMakeConcolic(buf, len, name);   // passing a stack variable should be safe
 	return len;
 #else
-	buf[0] = 'A'; buf[1] = 0; buf[2] = 0; buf[3] = 0;
-	return 4;
+	return len;
 #endif
 }
 
@@ -146,17 +164,20 @@ hostent *WSAAPI gethostbynameHook(
 	const char *name
 ) {
 	Message("gethostbyname called. name=%s\n", name);
-	hostent* ris = new hostent();
-	char* h_name = (char*)calloc(sizeof(char), 1);
+	char* h_name = (char*)malloc(strlen(name));
+	strcpy(h_name, name);
 	char* addr1 = (char*)calloc(sizeof(char), 1);
 	char** h_addr_list = (char**)malloc(sizeof(char*) * 2);
 	h_addr_list[0] = addr1; h_addr_list[1] = NULL;
 
+	hostent* ris = (hostent*)malloc(sizeof(hostent));
+
 	ris->h_name = h_name;
-	ris->h_length = 0;
+	ris->h_length = (short)strlen(name);
 	ris->h_addr_list = h_addr_list;
 	ris->h_aliases = h_addr_list;
 	return ris;
+
 }
 
 unsigned char OldHtonsHook[LEN_OPCODES_HOOK_FUNCTION];
@@ -165,6 +186,5 @@ u_short WINAPI htonsHook(
 )
 {
 	Message("Intercepted htons\n");
-	// return hostshort; // at 0x4035D4, symbolic write
 	return 0;
 }
