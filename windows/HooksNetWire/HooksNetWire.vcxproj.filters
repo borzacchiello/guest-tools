@@ -30,6 +30,9 @@
     <ClInclude Include="LibraryStubs.h">
       <Filter>File di intestazione</Filter>
     </ClInclude>
+    <ClInclude Include="KillAfterNGuest.h">
+      <Filter>File di intestazione</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -49,8 +52,8 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="trampoline.asm">
+    <MASM Include="trampoline.asm">
       <Filter>File di origine</Filter>
-    </None>
+    </MASM>
   </ItemGroup>
 </Project>

@@ -90,3 +90,99 @@ extern unsigned char OldHtonsHook[LEN_OPCODES_HOOK_FUNCTION];
 u_short WINAPI htonsHook(
 	u_short hostshort
 );
+
+// **********************************************************************************
+extern unsigned char OldHookRegOpenKeyExA[LEN_OPCODES_HOOK_FUNCTION];
+LSTATUS WINAPI HookRegOpenKeyExA(
+	HKEY   hKey,
+	LPCSTR lpSubKey,
+	DWORD  ulOptions,
+	REGSAM samDesired,
+	PHKEY  phkResult
+);
+
+extern unsigned char OldHookRegSetValueExA[LEN_OPCODES_HOOK_FUNCTION];
+LSTATUS WINAPI HookRegSetValueExA(
+	HKEY       hKey,
+	LPCSTR     lpValueName,
+	DWORD      Reserved,
+	DWORD      dwType,
+	const BYTE *lpData,
+	DWORD      cbData
+);
+
+extern unsigned char OldHookRegCloseKey[LEN_OPCODES_HOOK_FUNCTION];
+LSTATUS WINAPI HookRegCloseKey(
+	HKEY hKey
+);
+// ************************************************************************************************************
+// KERNEL32 ***************************************************************************************************
+extern unsigned char OldHookFindFirstFileA[LEN_OPCODES_HOOK_FUNCTION];
+HANDLE WINAPI HookFindFirstFileA(
+	LPCSTR             lpFileName,
+	LPWIN32_FIND_DATAA lpFindFileData
+);
+
+extern unsigned char OldHookFindNextFileA[LEN_OPCODES_HOOK_FUNCTION];
+HANDLE WINAPI HookFindNextFileA(
+	HANDLE             hFindFile,
+	LPWIN32_FIND_DATAA lpFindFileData
+);
+
+extern unsigned char OldHookFindClose[LEN_OPCODES_HOOK_FUNCTION];
+BOOL WINAPI HookFindClose(
+	HANDLE hFindFile
+);
+
+extern unsigned char OldHookCreateDirectoryA[LEN_OPCODES_HOOK_FUNCTION];
+BOOL WINAPI HookCreateDirectoryA(
+	LPCSTR                lpPathName,
+	LPSECURITY_ATTRIBUTES lpSecurityAttributes
+);
+
+extern unsigned char OldHookRemoveDirectoryA[LEN_OPCODES_HOOK_FUNCTION];
+BOOL WINAPI HookRemoveDirectoryA(
+	LPCSTR lpPathName
+);
+
+extern unsigned char OldHookCreateFileA[LEN_OPCODES_HOOK_FUNCTION];
+HANDLE WINAPI HookCreateFileA(
+	LPCSTR                lpFileName,
+	DWORD                 dwDesiredAccess,
+	DWORD                 dwShareMode,
+	LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+	DWORD                 dwCreationDisposition,
+	DWORD                 dwFlagsAndAttributes,
+	HANDLE                hTemplateFile
+);
+
+extern unsigned char OldHookCloseHandle[LEN_OPCODES_HOOK_FUNCTION];
+BOOL WINAPI HookCloseHandle(
+	_In_ HANDLE hObject
+);
+
+extern unsigned char OldHookMoveFileA[LEN_OPCODES_HOOK_FUNCTION];
+BOOL WINAPI HookMoveFileA(
+	LPCSTR lpExistingFileName,
+	LPCSTR lpNewFileName
+);
+
+extern unsigned char OldHookDeleteFileA[LEN_OPCODES_HOOK_FUNCTION];
+BOOL WINAPI HookDeleteFileA(
+	LPCSTR lpFileName
+);
+
+extern unsigned char OldHookGetDriveTypeA[LEN_OPCODES_HOOK_FUNCTION];
+UINT WINAPI HookGetDriveTypeA(
+	LPCSTR lpRootPathName
+);
+
+extern unsigned char OldHookGetLogicalDrives[LEN_OPCODES_HOOK_FUNCTION];
+DWORD WINAPI HookGetLogicalDrives();
+
+extern unsigned char OldHookWinExec[LEN_OPCODES_HOOK_FUNCTION];
+UINT WINAPI HookWinExec(
+	LPCSTR lpCmdLine,
+	UINT   uCmdShow
+);
+

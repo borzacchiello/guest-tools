@@ -81,11 +81,17 @@ int WSAAPI sendHook(
 	int        len,
 	int        flags
 ) {
-	char* dst = (char*)malloc(sizeof(char)*len+1);
-	memcpy(dst, buf, len);
-	dst[len] = NULL;
-	Message("send called. buf=%s\n", dst);
-	free(dst);
+	Message("send called.\n");
+	// exit(1);
+	// unsigned int snd_len;
+	// memcpy(&snd_len, buf, 4);
+	// char* dst = (char*)malloc(sizeof(char)*snd_len*3 + 1);
+	for (i=0; i<len; ++i)
+		Message("%x\n", buf[i] & 0xff);
+		// sprintf(dst + 3*i, "%x ", buf[4 + i]);
+	// memcpy(dst, buf + 4, snd_len);
+	// dst[len] = NULL;
+	// free(dst);
 	return len;
 }
 
@@ -116,7 +122,9 @@ int WSAAPI recvHook(
 #if S2E
 	if (S2EIsSymbolic((PVOID)&len, 4)) {
 		S2EPrintExpression(len, "symb_len");
-		S2EConcretize(&len, 4);
+		if (len > 0x45) S2EKillState(0, "limit len");
+		else      		S2EConcretize(&len, 4);
+		// S2EAssume(len = 0x41);
 		Message("Concretizing len to %d\n", len);
 	}
 #endif
@@ -128,13 +136,12 @@ int WSAAPI recvHook(
 	}
 	if (callCounter == 1) {
 		callCounter++;
+		Message("KEY\n");
 		// extracted using SE (TARGET: 0x040D3AD; AVOID: 0x040D3B6). First recv {0x41, 0x0, 0x0, 0x0}
-		unsigned char tmp[] = { 0x5, 0x88, 0x50, 0x19, 0x8, 0x54, 0x8d, 0xc0, 0xd0, 0x88, 0x50, 0x1a,  \
-			0x7, 0x5a, 0x85, 0xc0, 0xd0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x3, 0x11, 0x3c, 0x2, \
-			0xa9, 0x1e, 0x19, 0x6, 0x1b, 0xd1, 0x32, 0xf1, 0xbe, 0x78, 0x16, 0x61, 0x58, 0x63, 0xe2,   \
-			0x0, 0x9e, 0x3c, 0x87, 0x8, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,    \
-			0x0, 0x0, 0x0, 0x0 };
+		unsigned char tmp[] = { 0x5, 0x0, 0x0, 0x1, 0x4, 0x1, 0x4, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x4, 0x1, 0x4, 0x0, 0x1, 0x4, 0x5, 0x10, 0x10, 0x7, 0x1d, 0x4, 0x2, 0x8f, 0xd2, 0xb, 0xcb, 0x42, 0x16, 0x36, 0x25, 0x65, 0x35, 0xfd, 0x4e, 0xa6, 0x98, 0xa, 0x41, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0 };
 		memcpy(buf, tmp, 0x41);
+		// S2EMakeConcolic(buf, len, "recv_buf");
+		// buf[0] = 0x5;
 		return len;
 	}
 #if S2E
@@ -143,6 +150,11 @@ int WSAAPI recvHook(
 	S2EMakeConcolic(buf, len, name);   // passing a stack variable should be safe
 	return len;
 #else
+	if (len == 4)
+		buf[0] = 0x6;
+	else
+		buf[0] = 0x4b;
+	callCounter++;
 	return len;
 #endif
 }
@@ -188,3 +200,223 @@ u_short WINAPI htonsHook(
 	Message("Intercepted htons\n");
 	return 0;
 }
+
+
+// *****************************************************************************************
+
+unsigned char OldHookRegOpenKeyExA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+LSTATUS WINAPI HookRegOpenKeyExA(
+	HKEY   hKey,
+	LPCSTR lpSubKey,
+	DWORD  ulOptions,
+	REGSAM samDesired,
+	PHKEY  phkResult
+)
+{
+	*phkResult = (HKEY)0xDEADBEEF; // dummy handle
+	Message("Intercepted RegOpenKeyExA\n");
+	return ERROR_SUCCESS;
+}
+
+unsigned char OldHookRegSetValueExA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+LSTATUS WINAPI HookRegSetValueExA(
+	HKEY       hKey,
+	LPCSTR     lpValueName,
+	DWORD      Reserved,
+	DWORD      dwType,
+	const BYTE *lpData,
+	DWORD      cbData
+)
+{
+	if (S2EIsSymbolic((LPVOID)lpValueName, 1)) {
+		Message("Intercepted RegSetValueExA\n");
+		S2EPrintExpression(*lpValueName, "RegSetValueExA lpValueName");
+		Message("END SYMBOL");
+	}
+	else
+		Message("Intercepted RegSetValueExA(%s)\n", lpValueName);
+	return ERROR_SUCCESS;
+}
+
+unsigned char OldHookRegCloseKey[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+LSTATUS WINAPI HookRegCloseKey(
+	HKEY hKey
+)
+{
+	Message("Intercepted RegCloseKey(%08x)\n",
+		hKey);
+	return ERROR_SUCCESS;
+}
+
+// ************************************************************************************************************
+// KERNEL32 ***************************************************************************************************
+
+unsigned char OldHookFindFirstFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+HANDLE WINAPI HookFindFirstFileA(
+	LPCSTR             lpFileName,
+	LPWIN32_FIND_DATAA lpFindFileData
+)
+{
+	if (S2EIsSymbolic((LPVOID)lpFileName, 1)) {
+		Message("Intercepted FindFirstFileA\n");
+		S2EPrintExpression(*lpFileName, "FindFirstFileA FileName");
+		Message("END SYMBOL");
+	}
+	else
+		Message("Intercepted FindFirstFileA(%s)\n", lpFileName);
+	return INVALID_HANDLE_VALUE; // fail
+}
+
+unsigned char OldHookFindNextFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+HANDLE WINAPI HookFindNextFileA(
+	HANDLE             hFindFile,
+	LPWIN32_FIND_DATAA lpFindFileData
+)
+{
+	Message("Intercepted FindNextFileA\n");
+	return 0x0; // fail
+}
+
+unsigned char OldHookFindClose[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL WINAPI HookFindClose(
+	HANDLE hFindFile
+)
+{
+	Message("Intercepted FindClose\n");
+	return TRUE;
+}
+
+unsigned char OldHookCreateDirectoryA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL WINAPI HookCreateDirectoryA(
+	LPCSTR                lpPathName,
+	LPSECURITY_ATTRIBUTES lpSecurityAttributes
+)
+{
+	if (S2EIsSymbolic((LPVOID)lpPathName, 1)) {
+		Message("Intercepted CreateDirectoryA\n");
+		S2EPrintExpression(*lpPathName, "CreateDirectoryA PathName");
+		Message("END SYMBOL");
+	}
+	else
+		Message("Intercepted CreateDirectoryA(%s)\n", lpPathName);
+	return FALSE;
+}
+
+unsigned char OldHookRemoveDirectoryA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL WINAPI HookRemoveDirectoryA(
+	LPCSTR lpPathName
+)
+{
+	if (S2EIsSymbolic((LPVOID)lpPathName, 1)) {
+		Message("Intercepted RemoveDirectoryA\n");
+		S2EPrintExpression(*lpPathName, "RemoveDirectoryA PathName");
+		Message("END SYMBOL");
+	}
+	else
+		Message("Intercepted RemoveDirectoryA(%s)\n", lpPathName);
+	return FALSE;
+}
+
+unsigned char OldHookCreateFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+HANDLE WINAPI HookCreateFileA(
+	LPCSTR                lpFileName,
+	DWORD                 dwDesiredAccess,
+	DWORD                 dwShareMode,
+	LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+	DWORD                 dwCreationDisposition,
+	DWORD                 dwFlagsAndAttributes,
+	HANDLE                hTemplateFile
+)
+{
+	if (S2EIsSymbolic((LPVOID)lpFileName, 1)) {
+		Message("Intercepted CreateFileA\n");
+		S2EPrintExpression(*lpFileName, "CreateFileA FileName");
+		Message("END SYMBOL");
+	}
+	else
+		Message("Intercepted CreateFileA(%s)\n", lpFileName);
+	return INVALID_HANDLE_VALUE;// (HANDLE)0xDEADCAFE;
+}
+
+unsigned char OldHookCloseHandle[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL WINAPI HookCloseHandle(
+	_In_ HANDLE hObject
+)
+{
+	Message("Intercepted CloseHandle(%08x)\n",
+		hObject);
+	return TRUE;
+}
+
+unsigned char OldHookMoveFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL WINAPI HookMoveFileA(
+	LPCSTR lpExistingFileName,
+	LPCSTR lpNewFileName
+)
+{
+	if (S2EIsSymbolic((LPVOID)lpExistingFileName, 1) || S2EIsSymbolic((LPVOID)lpNewFileName, 1)) {
+		Message("Intercepted MoveFileA\n");
+		S2EPrintExpression(*lpExistingFileName, "MoveFileA ExistingFileName");
+		S2EPrintExpression(*lpNewFileName, "MoveFileA NewFileName");
+		Message("END SYMBOL");
+	}
+	else
+		Message("Intercepted MoveFileA(%s, %s)\n", lpExistingFileName, lpNewFileName);
+	return FALSE;
+}
+
+unsigned char OldHookDeleteFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL WINAPI HookDeleteFileA(
+	LPCSTR lpFileName
+)
+{
+	if (S2EIsSymbolic((LPVOID)lpFileName, 1)) {
+		Message("Intercepted DeleteFileA\n");
+		S2EPrintExpression(*lpFileName, "DeleteFileA FileName");
+		Message("END SYMBOL");
+	}
+	else
+		Message("Intercepted DeleteFileA(%s)\n", lpFileName);
+	return FALSE;
+}
+
+unsigned char OldHookGetDriveTypeA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+UINT WINAPI HookGetDriveTypeA(
+	LPCSTR lpRootPathName
+)
+{
+	if (S2EIsSymbolic((LPVOID)lpRootPathName, 1)) {
+		Message("Intercepted GetDriveTypeA\n");
+		S2EPrintExpression(*lpRootPathName, "GetDriveTypeA PathName");
+		Message("END SYMBOL");
+	}
+	else
+		Message("Intercepted GetDriveTypeA(%s)\n", lpRootPathName);
+	return DRIVE_UNKNOWN;
+}
+
+unsigned char OldHookGetLogicalDrives[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+DWORD WINAPI HookGetLogicalDrives()
+{
+	Message("Intercepted GetLogicalDrives()\n");
+	return 0; // no drive
+}
+
+unsigned char OldHookWinExec[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+UINT WINAPI HookWinExec(
+	LPCSTR lpCmdLine,
+	UINT   uCmdShow
+)
+{
+	if (S2EIsSymbolic((LPVOID)lpCmdLine, 1)) {
+		Message("Intercepted WinExec\n");
+		S2EPrintExpression(*lpCmdLine, "WinExec command");
+		Message("END SYMBOL");
+	}
+	else
+		Message("Intercepted WinExec(%s)\n", lpCmdLine);
+	return 32;
+}
+
+// ************************************************************************************************************
+

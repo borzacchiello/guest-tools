@@ -2,6 +2,7 @@
 #include "stdafx.h"
 #include "Util.h"
 #include "LibraryStubs.h"
+#include "KillAfterNGuest.h"
 #define USER_APP
 extern "C" {
 #include <s2e/s2e.h>
@@ -9,7 +10,7 @@ extern "C" {
 
 #define GET_FILE_PATH_ADDRESS 0x0405073
 #define ADDR_AFTER_INIT 0x0402027
-#define ADDR_CMD_SWITCH 0x0401068
+#define ADDR_CMD_SWITCH 0x04010C7// 0x0401068
 #define ADDR_CHECK 0x0402071
 #define ADDR_AFTER_SWITCH 0x0405214
 #define ADDR_AVOID_2 0x04020DE
@@ -20,9 +21,29 @@ extern "C" {
 
 #define ADDR_CMD_4 0x04010EB
 
+#define MALLOC_ADDR 0x040F520
+#define FREE_ADDR 0x040F530
+#define TIME_ADDR 0x40F5A8
+
 BOOL executed = FALSE;
-static volatile BOOL command_ex = FALSE;
+static BOOL command_ex = FALSE;
 int s2eVersion = 0;
+
+unsigned char oldMyTime[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+long long myTime() {
+	return 0;
+}
+
+unsigned char oldMyMalloc[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+void* myMalloc(int size) {
+	void* ris = calloc(size, 1);
+	return ris;
+}
+
+unsigned char oldMyFree[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+void myFree(void* addr) {
+	free(addr);
+}
 
 unsigned char oldCmd_4[LEN_OPCODES_HOOK_INSTRUCTION] = { 0 };
 void cmd_4()
@@ -67,7 +88,7 @@ void exit_stub()
 unsigned char oldAfterSwitch[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 void after_switch()
 {
-	if (! command_ex) {
+	if (! command_ex) {// (true) {
 #if S2E
 		S2EKillState(0, "avoid 1");
 #else
@@ -75,7 +96,7 @@ void after_switch()
 #endif
 	}
 	else {
-		command_ex = FALSE;
+		// command_ex = FALSE;
 		Message("After switch.\n");
 	}
 }
@@ -93,7 +114,36 @@ void cmd_switch(unsigned long eax, unsigned long ebx, unsigned long ecx,
 	Message("In command switch.\n");
 	if (counter > 0) {
 #if S2E
-		S2EKillState(0, "2nd switch");
+		// S2EKillState(0, "2nd switch");
+		Message("2nd switch. Counting.\n");
+
+		HookDynamicFunction("advapi32", "RegOpenKeyExA", (funcpointer)&HookRegOpenKeyExA, OldHookRegOpenKeyExA);
+		HookDynamicFunction("advapi32", "RegSetValueExA", (funcpointer)&HookRegSetValueExA, OldHookRegSetValueExA);
+		HookDynamicFunction("advapi32", "RegCloseKey", (funcpointer)&HookRegCloseKey, OldHookRegCloseKey);
+
+		HookDynamicFunction("kernel32", "FindFirstFileA", (funcpointer)&HookFindFirstFileA, OldHookFindFirstFileA);
+		HookDynamicFunction("kernel32", "FindNextFileA", (funcpointer)&HookFindNextFileA, OldHookFindNextFileA);
+		HookDynamicFunction("kernel32", "FindClose", (funcpointer)&HookFindClose, OldHookFindClose);
+
+		HookDynamicFunction("kernel32", "CreateDirectoryA", (funcpointer)&HookCreateDirectoryA, OldHookCreateDirectoryA);
+		HookDynamicFunction("kernel32", "RemoveDirectoryA", (funcpointer)&HookRemoveDirectoryA, OldHookRemoveDirectoryA);
+		HookDynamicFunction("kernel32", "MoveFileA", (funcpointer)&HookMoveFileA, OldHookMoveFileA);
+		HookDynamicFunction("kernel32", "DeleteFileA", (funcpointer)&HookDeleteFileA, OldHookDeleteFileA);
+		HookDynamicFunction("kernel32", "CreateFileA", (funcpointer)&HookCreateFileA, OldHookCreateFileA);
+		HookDynamicFunction("kernel32", "CloseHandle", (funcpointer)&HookCloseHandle, OldHookCloseHandle);
+
+		HookDynamicFunction("kernel32", "GetDriveTypeA", (funcpointer)&HookGetDriveTypeA, OldHookGetDriveTypeA);
+		HookDynamicFunction("kernel32", "GetLogicalDrives", (funcpointer)&HookGetLogicalDrives, OldHookGetLogicalDrives);
+
+		HookDynamicFunction("kernel32", "WinExec", (funcpointer)&HookWinExec, OldHookWinExec);
+		Message("Subs OK.\n");
+
+		KillAfterNGuestCommand command;
+		command.cmd = START_COUNT;
+		command.num_instructions = 1000;
+		S2EInvokePlugin("KillAfterN", &command, sizeof(command));
+		RestoreData((funcpointer)ADDR_CMD_SWITCH, oldCmd_switch, LEN_OPCODES_HOOK_INSTRUCTION);
+		counter++;
 #else
 		exit(1);
 #endif
@@ -123,6 +173,7 @@ void check_ris(unsigned long eax, unsigned long ebx, unsigned long ecx,
 	unsigned long edx, unsigned long edi, unsigned long esi)
 {
 	if (eax == 0) exit(1);
+	Message("RIS OK.\n");
 	HookInstruction((funcpointer)ADDR_AFTER_INIT, (funcpointer)hook_after_init, (funcpointer)ADDR_AFTER_INIT, oldHook_after_init);
 	RestoreData((funcpointer)ADDR_CHECK, oldCheck_ris, LEN_OPCODES_HOOK_INSTRUCTION);
 }
@@ -141,12 +192,15 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 #endif
 		if (!s2eVersion) InitDebugFile();
 		Message("Initialization phase.\n");
-
+		HookFunction((funcpointer)MALLOC_ADDR, (funcpointer)&myMalloc, oldMyMalloc);
+		HookFunction((funcpointer)FREE_ADDR, (funcpointer)&myFree, oldMyFree);
+		HookFunction((funcpointer)TIME_ADDR, (funcpointer)&myTime, oldMyTime);
 		HookFunction((funcpointer)GET_FILE_PATH_ADDRESS, (funcpointer)get_file_path_stub, oldGetFilePath);
 #if S2E
 		HookInstruction((funcpointer)ADDR_CMD_4, (funcpointer)cmd_4, (funcpointer)ADDR_CMD_4, oldCmd_4);
 
 		// HookFunction((funcpointer)ADDR_AVOID_3, (funcpointer)avoidTMP,oldAvoidTMP);
+		HookFunction((funcpointer)ADDR_AVOID_3, (funcpointer)exit_stub, oldExit_stub);
 		// HookFunction((funcpointer)ADDR_TARGET, (funcpointer)targetTMP, oldTargetTMP);
 
 		HookFunction((funcpointer)ADDR_AFTER_SWITCH, (funcpointer)after_switch, oldAfterSwitch);
