@@ -232,21 +232,21 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 
 		// HookFunction((funcpointer)ADDR_CREATE_DIRECTORY, (funcpointer)&targetTMP, oldTargetTMP);
 
-		HookDynamicFunction("advapi32", "RegOpenKeyExA", (funcpointer)&HookRegOpenKeyExA, OldHookRegOpenKeyExA);
-		HookDynamicFunction("advapi32", "RegSetValueExA", (funcpointer)&HookRegSetValueExA, OldHookRegSetValueExA);
-		HookDynamicFunction("advapi32", "RegCloseKey", (funcpointer)&HookRegCloseKey, OldHookRegCloseKey);
-		HookDynamicFunction("kernel32", "FindFirstFileA", (funcpointer)&HookFindFirstFileA, OldHookFindFirstFileA);
-		HookDynamicFunction("kernel32", "FindNextFileA", (funcpointer)&HookFindNextFileA, OldHookFindNextFileA);
-		HookDynamicFunction("kernel32", "FindClose", (funcpointer)&HookFindClose, OldHookFindClose);
+		//HookDynamicFunction("advapi32", "RegOpenKeyExA", (funcpointer)&HookRegOpenKeyExA, OldHookRegOpenKeyExA);
+		//HookDynamicFunction("advapi32", "RegSetValueExA", (funcpointer)&HookRegSetValueExA, OldHookRegSetValueExA);
+		//HookDynamicFunction("advapi32", "RegCloseKey", (funcpointer)&HookRegCloseKey, OldHookRegCloseKey);
+		//HookDynamicFunction("kernel32", "FindFirstFileA", (funcpointer)&HookFindFirstFileA, OldHookFindFirstFileA);
+		//HookDynamicFunction("kernel32", "FindNextFileA", (funcpointer)&HookFindNextFileA, OldHookFindNextFileA);
+		//HookDynamicFunction("kernel32", "FindClose", (funcpointer)&HookFindClose, OldHookFindClose);
 		HookDynamicFunction("kernel32", "CreateDirectoryA", (funcpointer)&HookCreateDirectoryA, OldHookCreateDirectoryA);
-		HookDynamicFunction("kernel32", "RemoveDirectoryA", (funcpointer)&HookRemoveDirectoryA, OldHookRemoveDirectoryA);
-		HookDynamicFunction("kernel32", "MoveFileA", (funcpointer)&HookMoveFileA, OldHookMoveFileA);
-		HookDynamicFunction("kernel32", "DeleteFileA", (funcpointer)&HookDeleteFileA, OldHookDeleteFileA);
-		HookDynamicFunction("kernel32", "CreateFileA", (funcpointer)&HookCreateFileA, OldHookCreateFileA);
-		HookDynamicFunction("kernel32", "CloseHandle", (funcpointer)&HookCloseHandle, OldHookCloseHandle);
-		HookDynamicFunction("kernel32", "GetDriveTypeA", (funcpointer)&HookGetDriveTypeA, OldHookGetDriveTypeA);
-		HookDynamicFunction("kernel32", "GetLogicalDrives", (funcpointer)&HookGetLogicalDrives, OldHookGetLogicalDrives);
-		HookDynamicFunction("kernel32", "WinExec", (funcpointer)&HookWinExec, OldHookWinExec);
+		//HookDynamicFunction("kernel32", "RemoveDirectoryA", (funcpointer)&HookRemoveDirectoryA, OldHookRemoveDirectoryA);
+		//HookDynamicFunction("kernel32", "MoveFileA", (funcpointer)&HookMoveFileA, OldHookMoveFileA);
+		//HookDynamicFunction("kernel32", "DeleteFileA", (funcpointer)&HookDeleteFileA, OldHookDeleteFileA);
+		//HookDynamicFunction("kernel32", "CreateFileA", (funcpointer)&HookCreateFileA, OldHookCreateFileA);
+		//HookDynamicFunction("kernel32", "CloseHandle", (funcpointer)&HookCloseHandle, OldHookCloseHandle);
+		//HookDynamicFunction("kernel32", "GetDriveTypeA", (funcpointer)&HookGetDriveTypeA, OldHookGetDriveTypeA);
+		//HookDynamicFunction("kernel32", "GetLogicalDrives", (funcpointer)&HookGetLogicalDrives, OldHookGetLogicalDrives);
+		//HookDynamicFunction("kernel32", "WinExec", (funcpointer)&HookWinExec, OldHookWinExec);
 
 		Message("Hooks done.\n");
 	}
