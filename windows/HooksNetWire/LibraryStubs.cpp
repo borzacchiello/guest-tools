@@ -333,9 +333,8 @@ int WSAAPI recvHook(
 	if (callCounter == 0) {
 		callCounter++;
 		buf[0] = 0x41;
-		return len;
 	}
-	if (callCounter == 1) {
+	else if (callCounter == 1) {
 		callCounter++;
 		Message("KEY\n");
 		// extracted using SE (TARGET: 0x040D3AD; AVOID: 0x040D3B6). First recv {0x41, 0x0, 0x0, 0x0}
@@ -343,21 +342,35 @@ int WSAAPI recvHook(
 		memcpy(buf, tmp, 0x41);
 		// S2EMakeConcolic(buf, len, "recv_buf");
 		// buf[0] = 0x5;
-		return len;
 	}
+	else {
 #if S2E
-	char name[50];
-	sprintf(name, "recv_%d", callCounter++);
-	S2EMakeConcolic(buf, len, name);   // passing a stack variable should be safe
-	return len;
+		char name[50];
+		sprintf(name, "recv_%d", callCounter++);
+		S2EMakeConcolic(buf, len, name);   // passing a stack variable should be safe
 #else
-	if (len == 4)
-		buf[0] = 0x6;
-	else
-		buf[0] = 0x1c;
-	callCounter++;
-	return len;
+		if (len == 4)
+			buf[0] = 0x6;
+		else
+			buf[0] = 0x36;
+		callCounter++;
 #endif
+	}
+	char* hex_tmp = NULL;
+#if S2E
+	if (S2EIsSymbolic(buf, 1))
+		S2EPrintExpression((UINT_PTR)*buf, "[recv] write *1:");
+	else {
+		hex_tmp = data_to_hex_string((char*)buf, len);
+		Message("  [recv] write *1: %s\n", hex_tmp);
+	}
+#else
+	hex_tmp = data_to_hex_string((char*)buf, len);
+	Message("  [recv] write *1: %s\n", hex_tmp);
+#endif
+	Message("  [recv] ret: %d\n", len);
+	free(hex_tmp);
+	return len;
 }
 
 unsigned char oldSelectHook[LEN_OPCODES_HOOK_FUNCTION];
@@ -570,14 +583,31 @@ HANDLE WINAPI HookFindFirstFileA(
 	LPWIN32_FIND_DATAA lpFindFileData
 )
 {
-	if (S2EIsSymbolic((LPVOID)lpFileName, 1)) {
-		Message("Intercepted FindFirstFileA\n");
-		S2EPrintExpression(*lpFileName, "FindFirstFileA FileName");
-		Message("END SYMBOL");
+	Message("FindFirstFileA called by 0x%x.\n", _ReturnAddress());
+#if S2E
+
+	if (S2EIsSymbolic(&lpFileName, 1))
+		S2EPrintExpression((UINT_PTR)lpFileName, "[FindFirstFileA] 0: ");
+	else {
+		Message("  [FindFirstFileA] 0: 0x%x\n", lpFileName);
+		if (S2EIsSymbolic((PVOID)lpFileName, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpFileName), "[FindFirstFileA] *0: ");
+		else
+			Message("  [FindFirstFileA] *0: %s\n", lpFileName);
 	}
+	if (S2EIsSymbolic(&lpFindFileData, 1))
+		S2EPrintExpression((UINT_PTR)lpFindFileData, "[FindFirstFileA] 1: ");
 	else
-		Message("Intercepted FindFirstFileA(%s)\n", lpFileName);
-	return INVALID_HANDLE_VALUE; // fail
+		Message("  [FindFirstFileA] 1: 0x%x\n", lpFindFileData);
+#else
+
+	Message("  [FindFirstFileA] 0: 0x%x\n", lpFileName);
+	Message("  [FindFirstFileA] *0: %s\n", lpFileName);
+	Message("  [FindFirstFileA] 1: 0x%x\n", lpFindFileData);
+#endif
+
+	Message("  [FindFirstFileA] ret: %d\n", INVALID_HANDLE_VALUE);
+	return INVALID_HANDLE_VALUE;
 }
 
 unsigned char OldHookFindNextFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
@@ -667,15 +697,82 @@ HANDLE WINAPI HookCreateFileA(
 	HANDLE                hTemplateFile
 )
 {
-	if (S2EIsSymbolic((LPVOID)lpFileName, 1)) {
-		Message("Intercepted CreateFileA\n");
-		S2EPrintExpression(*lpFileName, "CreateFileA FileName");
-		Message("END SYMBOL");
+	char* hex_lpSecurityAttributes = NULL;
+
+	Message("CreateFileA called by 0x%x.\n", _ReturnAddress());
+#if S2E
+
+	if (S2EIsSymbolic(&lpFileName, 1))
+		S2EPrintExpression((UINT_PTR)lpFileName, "[CreateFileA] 0: ");
+	else {
+		Message("  [CreateFileA] 0: 0x%x\n", lpFileName);
+		if (S2EIsSymbolic((PVOID)lpFileName, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpFileName), "[CreateFileA] *0: ");
+		else
+			Message("  [CreateFileA] *0: %s\n", lpFileName);
 	}
+	if (S2EIsSymbolic(&dwDesiredAccess, 1))
+		S2EPrintExpression((UINT_PTR)dwDesiredAccess, "[CreateFileA] 1: ");
 	else
-		Message("Intercepted CreateFileA(%s)\n", lpFileName);
-	return INVALID_HANDLE_VALUE;// (HANDLE)0xDEADCAFE;
+		Message("  [CreateFileA] 1: 0x%x\n", dwDesiredAccess);
+	if (S2EIsSymbolic(&dwShareMode, 1))
+		S2EPrintExpression((UINT_PTR)dwShareMode, "[CreateFileA] 2: ");
+	else
+		Message("  [CreateFileA] 2: 0x%x\n", dwShareMode);
+	if (S2EIsSymbolic(&lpSecurityAttributes, 1))
+		S2EPrintExpression((UINT_PTR)lpSecurityAttributes, "[CreateFileA] 3: ");
+	else {
+		Message("  [CreateFileA] 3: 0x%x\n", lpSecurityAttributes);
+		if (S2EIsSymbolic((PVOID)lpSecurityAttributes, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpSecurityAttributes), "[CreateFileA] *3: ");
+		else {
+			hex_lpSecurityAttributes = data_to_hex_string((char*)lpSecurityAttributes, sizeof(lpSecurityAttributes));
+			Message("  [CreateFileA] *3: %s\n", hex_lpSecurityAttributes);
+		}
+	}
+	if (S2EIsSymbolic(&dwCreationDisposition, 1))
+		S2EPrintExpression((UINT_PTR)dwCreationDisposition, "[CreateFileA] 4: ");
+	else
+		Message("  [CreateFileA] 4: 0x%x\n", dwCreationDisposition);
+	if (S2EIsSymbolic(&dwFlagsAndAttributes, 1))
+		S2EPrintExpression((UINT_PTR)dwFlagsAndAttributes, "[CreateFileA] 5: ");
+	else
+		Message("  [CreateFileA] 5: 0x%x\n", dwFlagsAndAttributes);
+	if (S2EIsSymbolic(&hTemplateFile, 1))
+		S2EPrintExpression((UINT_PTR)hTemplateFile, "[CreateFileA] 6: ");
+	else
+		Message("  [CreateFileA] 6: 0x%x\n", hTemplateFile);
+#else
+
+	Message("  [CreateFileA] 0: 0x%x\n", lpFileName);
+	Message("  [CreateFileA] *0: %s\n", lpFileName);
+	Message("  [CreateFileA] 1: 0x%x\n", dwDesiredAccess);
+	Message("  [CreateFileA] 2: 0x%x\n", dwShareMode);
+	Message("  [CreateFileA] 3: 0x%x\n", lpSecurityAttributes);
+	hex_lpSecurityAttributes = data_to_hex_string((char*)lpSecurityAttributes, sizeof(lpSecurityAttributes));
+	Message("  [CreateFileA] *3: %s\n", hex_lpSecurityAttributes);
+	Message("  [CreateFileA] 4: 0x%x\n", dwCreationDisposition);
+	Message("  [CreateFileA] 5: 0x%x\n", dwFlagsAndAttributes);
+	Message("  [CreateFileA] 6: 0x%x\n", hTemplateFile);
+#endif
+
+	free(hex_lpSecurityAttributes);
+
+	RestoreData(CreateFileA, OldHookCreateFileA, LEN_OPCODES_HOOK_FUNCTION);
+	HANDLE ris = CreateFileA(
+		lpFileName,
+		dwDesiredAccess,
+		dwShareMode,
+		lpSecurityAttributes,
+		dwCreationDisposition,
+		dwFlagsAndAttributes,
+		hTemplateFile);
+	HookDynamicFunction("kernel32", "CreateFileA", (funcpointer)&HookCreateFileA, OldHookCreateFileA);
+
+	Message("  [CreateFileA] ret: 0x%x\n", ris);
+	return ris;
 }
+
 
 unsigned char OldHookCloseHandle[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 BOOL WINAPI HookCloseHandle(
@@ -758,4 +855,223 @@ UINT WINAPI HookWinExec(
 }
 
 // ************************************************************************************************************
+// USER 32 ****************************************************************************************************
+
+unsigned char OldHookCreateWindowExA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+HWND WINAPI HookCreateWindowExA(
+	DWORD     dwExStyle,
+	LPCSTR    lpClassName,
+	LPCSTR    lpWindowName,
+	DWORD     dwStyle,
+	int       X,
+	int       Y,
+	int       nWidth,
+	int       nHeight,
+	HWND      hWndParent,
+	HMENU     hMenu,
+	HINSTANCE hInstance,
+	LPVOID    lpParam
+)
+{
+	char* hex_lpParam = NULL;
+
+	Message("CreateWindowExA called by 0x%x.\n", _ReturnAddress());
+#if S2E
+
+	if (S2EIsSymbolic(&dwExStyle, 1))
+		S2EPrintExpression((UINT_PTR)dwExStyle, "[CreateWindowExA] 0: ");
+	else
+		Message("  [CreateWindowExA] 0: 0x%x\n", dwExStyle);
+	if (S2EIsSymbolic(&lpClassName, 1))
+		S2EPrintExpression((UINT_PTR)lpClassName, "[CreateWindowExA] 1: ");
+	else {
+		Message("  [CreateWindowExA] 1: 0x%x\n", lpClassName);
+		if (S2EIsSymbolic((PVOID)lpClassName, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpClassName), "[CreateWindowExA] *1: ");
+		else
+			Message("  [CreateWindowExA] *1: %s\n", lpClassName);
+	}
+	if (S2EIsSymbolic(&lpWindowName, 1))
+		S2EPrintExpression((UINT_PTR)lpWindowName, "[CreateWindowExA] 2: ");
+	else {
+		Message("  [CreateWindowExA] 2: 0x%x\n", lpWindowName);
+		if (S2EIsSymbolic((PVOID)lpWindowName, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpWindowName), "[CreateWindowExA] *2: ");
+		else
+			Message("  [CreateWindowExA] *2: %s\n", lpWindowName);
+	}
+	if (S2EIsSymbolic(&dwStyle, 1))
+		S2EPrintExpression((UINT_PTR)dwStyle, "[CreateWindowExA] 3: ");
+	else
+		Message("  [CreateWindowExA] 3: 0x%x\n", dwStyle);
+	if (S2EIsSymbolic(&X, 1))
+		S2EPrintExpression((UINT_PTR)X, "[CreateWindowExA] 4: ");
+	else
+		Message("  [CreateWindowExA] 4: 0x%x\n", X);
+	if (S2EIsSymbolic(&Y, 1))
+		S2EPrintExpression((UINT_PTR)Y, "[CreateWindowExA] 5: ");
+	else
+		Message("  [CreateWindowExA] 5: 0x%x\n", Y);
+	if (S2EIsSymbolic(&nWidth, 1))
+		S2EPrintExpression((UINT_PTR)nWidth, "[CreateWindowExA] 6: ");
+	else
+		Message("  [CreateWindowExA] 6: 0x%x\n", nWidth);
+	if (S2EIsSymbolic(&nHeight, 1))
+		S2EPrintExpression((UINT_PTR)nHeight, "[CreateWindowExA] 7: ");
+	else
+		Message("  [CreateWindowExA] 7: 0x%x\n", nHeight);
+	if (S2EIsSymbolic(&hWndParent, 1))
+		S2EPrintExpression((UINT_PTR)hWndParent, "[CreateWindowExA] 8: ");
+	else
+		Message("  [CreateWindowExA] 8: 0x%x\n", hWndParent);
+	if (S2EIsSymbolic(&hMenu, 1))
+		S2EPrintExpression((UINT_PTR)hMenu, "[CreateWindowExA] 9: ");
+	else
+		Message("  [CreateWindowExA] 9: 0x%x\n", hMenu);
+	if (S2EIsSymbolic(&hInstance, 1))
+		S2EPrintExpression((UINT_PTR)hInstance, "[CreateWindowExA] 10: ");
+	else
+		Message("  [CreateWindowExA] 10: 0x%x\n", hInstance);
+	if (S2EIsSymbolic(&lpParam, 1))
+		S2EPrintExpression((UINT_PTR)lpParam, "[CreateWindowExA] 11: ");
+	else {
+		Message("  [CreateWindowExA] 11: 0x%x\n", lpParam);
+		if (S2EIsSymbolic((PVOID)lpParam, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpParam), "[CreateWindowExA] *11: ");
+		else {
+			hex_lpParam = data_to_hex_string((char*)lpParam, sizeof(lpParam));
+			Message("  [CreateWindowExA] *11: %s\n", hex_lpParam);
+		}
+	}
+#else
+
+	Message("  [CreateWindowExA] 0: 0x%x\n", dwExStyle);
+	Message("  [CreateWindowExA] 1: 0x%x\n", lpClassName);
+	Message("  [CreateWindowExA] *1: %s\n", lpClassName);
+	Message("  [CreateWindowExA] 2: 0x%x\n", lpWindowName);
+	Message("  [CreateWindowExA] *2: %s\n", lpWindowName);
+	Message("  [CreateWindowExA] 3: 0x%x\n", dwStyle);
+	Message("  [CreateWindowExA] 4: 0x%x\n", X);
+	Message("  [CreateWindowExA] 5: 0x%x\n", Y);
+	Message("  [CreateWindowExA] 6: 0x%x\n", nWidth);
+	Message("  [CreateWindowExA] 7: 0x%x\n", nHeight);
+	Message("  [CreateWindowExA] 8: 0x%x\n", hWndParent);
+	Message("  [CreateWindowExA] 9: 0x%x\n", hMenu);
+	Message("  [CreateWindowExA] 10: 0x%x\n", hInstance);
+	Message("  [CreateWindowExA] 11: 0x%x\n", lpParam);
+	hex_lpParam = data_to_hex_string((char*)lpParam, sizeof(lpParam));
+	Message("  [CreateWindowExA] *11: %s\n", hex_lpParam);
+#endif
+
+	free(hex_lpParam);
+
+	RestoreData((LPVOID)CreateWindowExA, OldHookCreateWindowExA, LEN_OPCODES_HOOK_FUNCTION);
+	HWND ris = CreateWindowExA(
+		dwExStyle,
+		lpClassName,
+		lpWindowName,
+		dwStyle,
+		X,
+		Y,
+		nWidth,
+		nHeight,
+		hWndParent,
+		hMenu,
+		hInstance,
+		lpParam
+	);
+	HookDynamicFunction("user32", "CreateWindowExA", (funcpointer)HookCreateWindowExA, OldHookCreateWindowExA);
+
+	Message("  [CreateWindowExA] ret: 0x%x\n", ris);
+	return ris;
+}
+
+// ************************************************************************************************************
+// MSVCRT *****************************************************************************************************
+
+unsigned char Old_beginthreadexHook[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+uintptr_t _beginthreadexHook(
+	void *security,
+	unsigned stack_size,
+	unsigned(__stdcall *start_address)(void *),
+	void *arglist,
+	unsigned initflag,
+	unsigned *thrdaddr
+)
+{
+	char* hex_security = NULL;
+	char* hex_arglist = NULL;
+	char* hex_thrdaddr = NULL;
+
+	Message("_beginthreadex called by 0x%x.\n", _ReturnAddress());
+#if S2E
+
+	if (S2EIsSymbolic(&security, 1))
+		S2EPrintExpression((UINT_PTR)security, "[_beginthreadex] 0: ");
+	else {
+		Message("  [_beginthreadex] 0: 0x%x\n", security);
+		if (S2EIsSymbolic((PVOID)security, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)security), "[_beginthreadex] *0: ");
+		else {
+			hex_security = data_to_hex_string((char*)security, sizeof(security));
+			Message("  [_beginthreadex] *0: %s\n", hex_security);
+		}
+	}
+	if (S2EIsSymbolic(&stack_size, 1))
+		S2EPrintExpression((UINT_PTR)stack_size, "[_beginthreadex] 1: ");
+	else
+		Message("  [_beginthreadex] 1: 0x%x\n", stack_size);
+	if (S2EIsSymbolic(&start_address, 1))
+		S2EPrintExpression((UINT_PTR)start_address, "[_beginthreadex] 2: ");
+	else 
+		Message("  [_beginthreadex] 2: 0x%x\n", start_address);
+	if (S2EIsSymbolic(&arglist, 1))
+		S2EPrintExpression((UINT_PTR)arglist, "[_beginthreadex] 3: ");
+	else {
+		Message("  [_beginthreadex] 3: 0x%x\n", arglist);
+		if (S2EIsSymbolic((PVOID)arglist, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)arglist), "[_beginthreadex] *3: ");
+		else {
+			hex_arglist = data_to_hex_string((char*)arglist, sizeof(arglist));
+			Message("  [_beginthreadex] *3: %s\n", hex_arglist);
+		}
+	}
+	if (S2EIsSymbolic(&initflag, 1))
+		S2EPrintExpression((UINT_PTR)initflag, "[_beginthreadexHook] 4: ");
+	else
+		Message("  [_beginthreadex] 4: 0x%x\n", initflag);
+	if (S2EIsSymbolic(&thrdaddr, 1))
+		S2EPrintExpression((UINT_PTR)thrdaddr, "[_beginthreadexHook] 5: ");
+	else {
+		Message("  [_beginthreadex] 5: 0x%x\n", thrdaddr);
+		if (S2EIsSymbolic((PVOID)thrdaddr, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)thrdaddr), "[_beginthreadexHook] *5: ");
+		else {
+			hex_thrdaddr = data_to_hex_string((char*)thrdaddr, sizeof(thrdaddr));
+			Message("  [_beginthreadex] *5: %s\n", hex_thrdaddr);
+		}
+	}
+#else
+
+	Message("  [_beginthreadex] 0: 0x%x\n", security);
+	hex_security = data_to_hex_string((char*)security, sizeof(security));
+	Message("  [_beginthreadex] *0: %s\n", hex_security);
+	Message("  [_beginthreadex] 1: 0x%x\n", stack_size);
+	Message("  [_beginthreadex] 2: 0x%x\n", start_address);
+	Message("  [_beginthreadex] 3: 0x%x\n", arglist);
+	hex_arglist = data_to_hex_string((char*)arglist, sizeof(arglist));
+	Message("  [_beginthreadex] *3: %s\n", hex_arglist);
+	Message("  [_beginthreadex] 4: 0x%x\n", initflag);
+	Message("  [_beginthreadex] 5: 0x%x\n", thrdaddr);
+	hex_thrdaddr = data_to_hex_string((char*)thrdaddr, sizeof(thrdaddr));
+	Message("  [_beginthreadex] *5: %s\n", hex_thrdaddr);
+#endif
+
+	free(hex_security);
+	free(hex_arglist);
+	free(hex_thrdaddr);
+
+	Message("  [_beginthreadex] ret: -1\n");
+	return -1L;
+}
 

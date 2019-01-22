@@ -13,7 +13,8 @@
 // File di intestazione di Windows
 #include <windows.h>
 #include <cstdlib>
-
+#include <winuser.h>
+#include <process.h>
 
 
 // fare riferimento qui alle intestazioni aggiuntive richieste dal programma

@@ -8,7 +8,7 @@ extern "C" {
 #include <s2e/s2e.h>
 }
 
-#define GET_FILE_PATH_ADDRESS 0x0405073
+#define GET_FILE_PATH_ADDRESS 0x409BAB //0x0405073
 #define ADDR_AFTER_INIT 0x0402027
 #define ADDR_CMD_SWITCH 0x04010C7// 0x0401068
 #define ADDR_CHECK 0x0402071
@@ -111,58 +111,6 @@ int get_file_path_stub() {
 	return 0;
 }
 
-int counter = 0;
-unsigned char oldCmd_switch[LEN_OPCODES_HOOK_INSTRUCTION] = { 0 };
-void cmd_switch(unsigned long eax, unsigned long ebx, unsigned long ecx,
-	unsigned long edx, unsigned long edi, unsigned long esi)
-{
-	Message("In command switch.\n");
-	if (counter > 0) {
-#if S2E
-		// S2EKillState(0, "2nd switch");
-		Message("2nd switch. Counting.\n");
-
-		// HookInstruction((funcpointer)ADDR_END_SWITCH, (funcpointer)&exit_stub, 0, oldExit_stub);
-		HookFunction((funcpointer)ADDR_CREATE_DIRECTORY, (funcpointer)&targetTMP, oldTargetTMP);
-
-		HookDynamicFunction("advapi32", "RegOpenKeyExA", (funcpointer)&HookRegOpenKeyExA, OldHookRegOpenKeyExA);
-		HookDynamicFunction("advapi32", "RegSetValueExA", (funcpointer)&HookRegSetValueExA, OldHookRegSetValueExA);
-		HookDynamicFunction("advapi32", "RegCloseKey", (funcpointer)&HookRegCloseKey, OldHookRegCloseKey);
-
-		HookDynamicFunction("kernel32", "FindFirstFileA", (funcpointer)&HookFindFirstFileA, OldHookFindFirstFileA);
-		HookDynamicFunction("kernel32", "FindNextFileA", (funcpointer)&HookFindNextFileA, OldHookFindNextFileA);
-		HookDynamicFunction("kernel32", "FindClose", (funcpointer)&HookFindClose, OldHookFindClose);
-
-		HookDynamicFunction("kernel32", "CreateDirectoryA", (funcpointer)&HookCreateDirectoryA, OldHookCreateDirectoryA);
-		HookDynamicFunction("kernel32", "RemoveDirectoryA", (funcpointer)&HookRemoveDirectoryA, OldHookRemoveDirectoryA);
-		HookDynamicFunction("kernel32", "MoveFileA", (funcpointer)&HookMoveFileA, OldHookMoveFileA);
-		HookDynamicFunction("kernel32", "DeleteFileA", (funcpointer)&HookDeleteFileA, OldHookDeleteFileA);
-		HookDynamicFunction("kernel32", "CreateFileA", (funcpointer)&HookCreateFileA, OldHookCreateFileA);
-		HookDynamicFunction("kernel32", "CloseHandle", (funcpointer)&HookCloseHandle, OldHookCloseHandle);
-
-		HookDynamicFunction("kernel32", "GetDriveTypeA", (funcpointer)&HookGetDriveTypeA, OldHookGetDriveTypeA);
-		HookDynamicFunction("kernel32", "GetLogicalDrives", (funcpointer)&HookGetLogicalDrives, OldHookGetLogicalDrives);
-
-		HookDynamicFunction("kernel32", "WinExec", (funcpointer)&HookWinExec, OldHookWinExec);
-		Message("Subs OK.\n");
-
-		KillAfterNGuestCommand command;
-		command.cmd = START_COUNT;
-		command.num_instructions = 200;
-		// S2EInvokePlugin("KillAfterN", &command, sizeof(command));
-		RestoreData((funcpointer)ADDR_CMD_SWITCH, oldCmd_switch, LEN_OPCODES_HOOK_INSTRUCTION);
-		counter++;
-#else
-		exit(1);
-#endif
-	}
-	else {
-		command_ex = TRUE;
-		RestoreData((funcpointer)ADDR_CMD_SWITCH, oldCmd_switch, LEN_OPCODES_HOOK_INSTRUCTION);
-		counter++;
-	}
-}
-
 // rendez-vouz *******
 void check_ris(unsigned long eax, unsigned long ebx, unsigned long ecx,
 	unsigned long edx, unsigned long edi, unsigned long esi);
@@ -172,7 +120,6 @@ unsigned char oldHook_after_init[LEN_OPCODES_HOOK_INSTRUCTION] = { 0 };
 void hook_after_init(unsigned long eax, unsigned long ebx, unsigned long ecx,
 	unsigned long edx, unsigned long edi, unsigned long esi)
 {
-	// HookInstruction((funcpointer)ADDR_CMD_SWITCH, (funcpointer)&cmd_switch, (funcpointer)ADDR_CMD_SWITCH, oldCmd_switch);
 	HookInstruction((funcpointer)ADDR_CHECK, (funcpointer)check_ris, (funcpointer)ADDR_CHECK, oldCheck_ris);
 	RestoreData((funcpointer)ADDR_AFTER_INIT, oldHook_after_init, LEN_OPCODES_HOOK_INSTRUCTION);
 }
@@ -235,18 +182,22 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		//HookDynamicFunction("advapi32", "RegOpenKeyExA", (funcpointer)&HookRegOpenKeyExA, OldHookRegOpenKeyExA);
 		//HookDynamicFunction("advapi32", "RegSetValueExA", (funcpointer)&HookRegSetValueExA, OldHookRegSetValueExA);
 		//HookDynamicFunction("advapi32", "RegCloseKey", (funcpointer)&HookRegCloseKey, OldHookRegCloseKey);
-		//HookDynamicFunction("kernel32", "FindFirstFileA", (funcpointer)&HookFindFirstFileA, OldHookFindFirstFileA);
+		HookDynamicFunction("kernel32", "FindFirstFileA", (funcpointer)&HookFindFirstFileA, OldHookFindFirstFileA);
 		//HookDynamicFunction("kernel32", "FindNextFileA", (funcpointer)&HookFindNextFileA, OldHookFindNextFileA);
 		//HookDynamicFunction("kernel32", "FindClose", (funcpointer)&HookFindClose, OldHookFindClose);
 		HookDynamicFunction("kernel32", "CreateDirectoryA", (funcpointer)&HookCreateDirectoryA, OldHookCreateDirectoryA);
 		//HookDynamicFunction("kernel32", "RemoveDirectoryA", (funcpointer)&HookRemoveDirectoryA, OldHookRemoveDirectoryA);
 		//HookDynamicFunction("kernel32", "MoveFileA", (funcpointer)&HookMoveFileA, OldHookMoveFileA);
 		//HookDynamicFunction("kernel32", "DeleteFileA", (funcpointer)&HookDeleteFileA, OldHookDeleteFileA);
-		//HookDynamicFunction("kernel32", "CreateFileA", (funcpointer)&HookCreateFileA, OldHookCreateFileA);
+		HookDynamicFunction("kernel32", "CreateFileA", (funcpointer)&HookCreateFileA, OldHookCreateFileA);
 		//HookDynamicFunction("kernel32", "CloseHandle", (funcpointer)&HookCloseHandle, OldHookCloseHandle);
 		//HookDynamicFunction("kernel32", "GetDriveTypeA", (funcpointer)&HookGetDriveTypeA, OldHookGetDriveTypeA);
 		//HookDynamicFunction("kernel32", "GetLogicalDrives", (funcpointer)&HookGetLogicalDrives, OldHookGetLogicalDrives);
 		//HookDynamicFunction("kernel32", "WinExec", (funcpointer)&HookWinExec, OldHookWinExec);
+
+		HookDynamicFunction("user32", "CreateWindowExA", (funcpointer)HookCreateWindowExA, OldHookCreateWindowExA);
+		// HookFunction((funcpointer)_beginthreadex, (funcpointer)_beginthreadexHook, Old_beginthreadexHook);
+		HookDynamicFunction("msvcrt", "_beginthreadex", (funcpointer)_beginthreadexHook, Old_beginthreadexHook);
 
 		Message("Hooks done.\n");
 	}

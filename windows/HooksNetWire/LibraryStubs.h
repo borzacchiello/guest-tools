@@ -186,3 +186,33 @@ UINT WINAPI HookWinExec(
 	UINT   uCmdShow
 );
 
+// ************************************************************************************************************
+// USER32 *****************************************************************************************************
+extern unsigned char OldHookCreateWindowExA[LEN_OPCODES_HOOK_FUNCTION];
+HWND WINAPI HookCreateWindowExA(
+	DWORD     dwExStyle,
+	LPCSTR    lpClassName,
+	LPCSTR    lpWindowName,
+	DWORD     dwStyle,
+	int       X,
+	int       Y,
+	int       nWidth,
+	int       nHeight,
+	HWND      hWndParent,
+	HMENU     hMenu,
+	HINSTANCE hInstance,
+	LPVOID    lpParam
+);
+
+// ************************************************************************************************************
+// MSVCRT *****************************************************************************************************
+
+extern unsigned char Old_beginthreadexHook[LEN_OPCODES_HOOK_FUNCTION];
+uintptr_t _beginthreadexHook(
+	void *security,
+	unsigned stack_size,
+	unsigned(__stdcall *start_address)(void *),
+	void *arglist,
+	unsigned initflag,
+	unsigned *thrdaddr
+);
