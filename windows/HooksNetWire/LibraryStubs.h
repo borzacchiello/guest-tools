@@ -4,6 +4,7 @@
 #include <WinInet.h>
 #include <winsock2.h>
 #include <Ws2tcpip.h>
+#include <wincrypt.h>
 #include "Util.h"
 
 extern unsigned char oldWSAStartupHook[LEN_OPCODES_HOOK_FUNCTION];
@@ -91,7 +92,23 @@ u_short WINAPI htonsHook(
 	u_short hostshort
 );
 
-// **********************************************************************************
+// ************************************************************************************************************
+// ADVAPI32 ***************************************************************************************************
+extern unsigned char OldHookCryptCreateHash[LEN_OPCODES_HOOK_FUNCTION];
+BOOL HookCryptCreateHash(
+	HCRYPTPROV hProv,
+	ALG_ID     Algid,
+	HCRYPTKEY  hKey,
+	DWORD      dwFlags,
+	HCRYPTHASH *phHash
+);
+
+extern unsigned char OldHookGetUserNameA[LEN_OPCODES_HOOK_FUNCTION];
+BOOL WINAPI HookGetUserNameA(
+	LPSTR   lpBuffer,
+	LPDWORD pcbBuffer
+);
+
 extern unsigned char OldHookRegOpenKeyExA[LEN_OPCODES_HOOK_FUNCTION];
 LSTATUS WINAPI HookRegOpenKeyExA(
 	HKEY   hKey,
@@ -117,6 +134,14 @@ LSTATUS WINAPI HookRegCloseKey(
 );
 // ************************************************************************************************************
 // KERNEL32 ***************************************************************************************************
+
+extern unsigned char OldHookCreateMutexA[LEN_OPCODES_HOOK_FUNCTION];
+HANDLE WINAPI HookCreateMutexA(
+	LPSECURITY_ATTRIBUTES lpMutexAttributes,
+	BOOL                  bInitialOwner,
+	LPCSTR                lpName
+);
+
 extern unsigned char OldHookFindFirstFileA[LEN_OPCODES_HOOK_FUNCTION];
 HANDLE WINAPI HookFindFirstFileA(
 	LPCSTR             lpFileName,
@@ -124,7 +149,7 @@ HANDLE WINAPI HookFindFirstFileA(
 );
 
 extern unsigned char OldHookFindNextFileA[LEN_OPCODES_HOOK_FUNCTION];
-HANDLE WINAPI HookFindNextFileA(
+BOOL WINAPI HookFindNextFileA(
 	HANDLE             hFindFile,
 	LPWIN32_FIND_DATAA lpFindFileData
 );

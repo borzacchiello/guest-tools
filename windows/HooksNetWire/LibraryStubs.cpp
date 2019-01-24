@@ -196,21 +196,41 @@ unsigned char oldClosesocketHook[LEN_OPCODES_HOOK_FUNCTION];
 int WSAAPI closesocketHook(
 	SOCKET s
 ) {
-	Message("closesocket called.\n");
+	Message("closesocket called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&s, 1))
+		S2EPrintExpression((UINT_PTR)s, "[closesocket] 0: ");
+	else
+		Message("  [closesocket] 0: 0x%x\n", s);
+#else
+	Message("  [closesocket] 0: 0x%x\n", s);
+#endif
+
+	Message("  [closesocket] ret: 0\n");
 	return 0;
 }
+
 
 unsigned char oldFreeaddrinfoHook[LEN_OPCODES_HOOK_FUNCTION];
 VOID WSAAPI freeaddrinfoHook(
 	PADDRINFOA pAddrInfo
 ) {
-	Message("freeaddrinfo called.\n");
-	return;
+    char* hex_pAddrInfo = NULL;
+    Message("freeaddrinfo called by 0x%x.\n", _ReturnAddress());
+#if S2E
+    if (S2EIsSymbolic(&pAddrInfo, 1))
+        S2EPrintExpression((UINT_PTR)pAddrInfo, "[freeaddrinfo] 0: ");
+    else 
+        Message("  [freeaddrinfo] 0: 0x%x\n",  pAddrInfo);
+#else
+    Message("  [freeaddrinfo] 0: 0x%x\n",  pAddrInfo);
+#endif
 }
+
 
 unsigned char oldWSACleanupHook[LEN_OPCODES_HOOK_FUNCTION];
 int WINAPI WSACleanupHook() {
-	Message("WSACleanupHook called.\n");
+	Message("WSACleanupHook called by 0x%x.\n", _ReturnAddress());
 	return 0;
 }
 
@@ -272,13 +292,30 @@ int WSAAPI shutdownHook(
 	SOCKET s,
 	int    how
 ) {
-	Message("shutdown called.\n");
+	Message("shutdown called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&s, 1))
+		S2EPrintExpression((UINT_PTR)s, "[shutdown] 0: ");
+	else
+		Message("  [shutdown] 0: 0x%x\n", s);
+	if (S2EIsSymbolic(&how, 1))
+		S2EPrintExpression((UINT_PTR)how, "[shutdown] 1: ");
+	else
+		Message("  [shutdown] 1: 0x%x\n", how);
+#else
+	Message("  [shutdown] 0: 0x%x\n", s);
+	Message("  [shutdown] 1: 0x%x\n", how);
+#endif
+
+	Message("  [shutdown] ret: 0\n");
 	return 0;
 }
 
+
 unsigned char oldWSAGetLastErrorHook[LEN_OPCODES_HOOK_FUNCTION];
 int WINAPI WSAGetLastErrorHook() {
-	Message("WSAGetLastError called.\n");
+	Message("WSAGetLastError called by 0x%x.\n", _ReturnAddress());
+	Message("  [WSAGetLastError] ret: 42\n");
 	return 42;
 }
 
@@ -522,13 +559,130 @@ u_short WINAPI htonsHook(
 #else
 	Message("  [htons] 0: 0x%x\n", hostshort);
 #endif
+
 	Message("  [htons] ret: 0\n");
 	return 0;
 }
 
 
+// ************************************************************************************************************
+// ADVAPI32 ***************************************************************************************************
 
-// *****************************************************************************************
+unsigned char OldHookCryptCreateHash[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL HookCryptCreateHash(
+	HCRYPTPROV hProv,
+	ALG_ID     Algid,
+	HCRYPTKEY  hKey,
+	DWORD      dwFlags,
+	HCRYPTHASH *phHash
+)
+{
+	char* hex_phHash = NULL;
+	Message("CryptCreateHash called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&hProv, 1))
+		S2EPrintExpression((UINT_PTR)hProv, "[CryptCreateHash] 0: ");
+	else
+		Message("  [CryptCreateHash] 0: 0x%x\n", hProv);
+	if (S2EIsSymbolic(&Algid, 1))
+		S2EPrintExpression((UINT_PTR)Algid, "[CryptCreateHash] 1: ");
+	else
+		Message("  [CryptCreateHash] 1: 0x%x\n", Algid);
+	if (S2EIsSymbolic(&hKey, 1))
+		S2EPrintExpression((UINT_PTR)hKey, "[CryptCreateHash] 2: ");
+	else
+		Message("  [CryptCreateHash] 2: 0x%x\n", hKey);
+	if (S2EIsSymbolic(&dwFlags, 1))
+		S2EPrintExpression((UINT_PTR)dwFlags, "[CryptCreateHash] 3: ");
+	else
+		Message("  [CryptCreateHash] 3: 0x%x\n", dwFlags);
+	if (S2EIsSymbolic(&phHash, 1))
+		S2EPrintExpression((UINT_PTR)phHash, "[CryptCreateHash] 4: ");
+	else {
+		Message("  [CryptCreateHash] 4: 0x%x\n", phHash);
+		if (S2EIsSymbolic((PVOID)phHash, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)phHash), "[CryptCreateHash] *4: ");
+		else {
+			hex_phHash = data_to_hex_string((char*)phHash, sizeof(phHash));
+			Message("  [CryptCreateHash] *4: %s\n", hex_phHash);
+		}
+	}
+#else
+	Message("  [CryptCreateHash] 0: 0x%x\n", hProv);
+	Message("  [CryptCreateHash] 1: 0x%x\n", Algid);
+	Message("  [CryptCreateHash] 2: 0x%x\n", hKey);
+	Message("  [CryptCreateHash] 3: 0x%x\n", dwFlags);
+	Message("  [CryptCreateHash] 4: 0x%x\n", phHash);
+	hex_phHash = data_to_hex_string((char*)phHash, sizeof(phHash));
+	Message("  [CryptCreateHash] *4: %s\n", hex_phHash);
+#endif
+	free(hex_phHash);
+
+	RestoreData(CryptCreateHash, OldHookCryptCreateHash, LEN_OPCODES_HOOK_FUNCTION);
+	BOOL ris = CryptCreateHash(
+		hProv,
+		Algid,
+		hKey,
+		dwFlags,
+		phHash
+	);
+	HookDynamicFunction("advapi32", "CryptCreateHash", (funcpointer)HookCryptCreateHash, OldHookCryptCreateHash);
+	
+	Message("  [CryptCreateHash] ret: 0x%x\n", ris);
+	return ris;
+}
+
+
+unsigned char OldHookGetUserNameA[LEN_OPCODES_HOOK_FUNCTION];
+BOOL WINAPI HookGetUserNameA(
+	LPSTR   lpBuffer,
+	LPDWORD pcbBuffer
+)
+{
+	char* hex_pcbBuffer = NULL;
+	Message("GetUserNameA called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&lpBuffer, 1))
+		S2EPrintExpression((UINT_PTR)lpBuffer, "[GetUserNameA] 0: ");
+	else 
+		Message("  [GetUserNameA] 0: 0x%x\n", lpBuffer);
+	if (S2EIsSymbolic(&pcbBuffer, 1))
+		S2EPrintExpression((UINT_PTR)pcbBuffer, "[GetUserNameA] 1: ");
+	else {
+		Message("  [GetUserNameA] 1: 0x%x\n", pcbBuffer);
+		if (S2EIsSymbolic((PVOID)pcbBuffer, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)pcbBuffer), "[GetUserNameA] *1: ");
+		else {
+			hex_pcbBuffer = data_to_hex_string((char*)pcbBuffer, sizeof(pcbBuffer));
+			Message("  [GetUserNameA] *1: %s\n", hex_pcbBuffer);
+		}
+	}
+#else
+	Message("  [GetUserNameA] 0: 0x%x\n", lpBuffer);
+	Message("  [GetUserNameA] 1: 0x%x\n", pcbBuffer);
+	hex_pcbBuffer = data_to_hex_string((char*)pcbBuffer, sizeof(pcbBuffer));
+	Message("  [GetUserNameA] *1: %s\n", hex_pcbBuffer);
+#endif
+	free(hex_pcbBuffer);
+
+	RestoreData(GetUserNameA, OldHookGetUserNameA, LEN_OPCODES_HOOK_FUNCTION);
+	BOOL ris = GetUserNameA(
+		lpBuffer,
+		pcbBuffer
+	);
+	HookDynamicFunction("advapi32", "GetUserNameA", (funcpointer)HookGetUserNameA, OldHookGetUserNameA);
+
+#if S2E
+	if (S2EIsSymbolic((PVOID)lpBuffer, 1))
+		S2EPrintExpression((UINT_PTR)*((char*)lpBuffer), "[GetUserNameA] write 0: ");
+	else
+		Message("  [GetUserNameA] write *0: %s\n", lpBuffer);
+#else
+	Message("  [GetUserNameA] write *0: %s\n", lpBuffer);
+#endif
+	Message("  [GetUserNameA] ret: 0x%x\n", ris);
+	return ris;
+}
 
 unsigned char OldHookRegOpenKeyExA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 LSTATUS WINAPI HookRegOpenKeyExA(
@@ -539,10 +693,56 @@ LSTATUS WINAPI HookRegOpenKeyExA(
 	PHKEY  phkResult
 )
 {
-	*phkResult = (HKEY)0xcafecafe; // dummy handle
-	Message("Intercepted RegOpenKeyExA\n");
+	Message("RegOpenKeyExA called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&hKey, 1))
+		S2EPrintExpression((UINT_PTR)hKey, "[RegOpenKeyExA] 0: ");
+	else
+		Message("  [RegOpenKeyExA] 0: 0x%x\n", hKey);
+	if (S2EIsSymbolic(&lpSubKey, 1))
+		S2EPrintExpression((UINT_PTR)lpSubKey, "[RegOpenKeyExA] 1: ");
+	else {
+		Message("  [RegOpenKeyExA] 1: 0x%x\n", lpSubKey);
+		if (S2EIsSymbolic((PVOID)lpSubKey, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpSubKey), "[RegOpenKeyExA] *1: ");
+		else
+			Message("  [RegOpenKeyExA] *1: %s\n", lpSubKey);
+	}
+	if (S2EIsSymbolic(&ulOptions, 1))
+		S2EPrintExpression((UINT_PTR)ulOptions, "[RegOpenKeyExA] 2: ");
+	else
+		Message("  [RegOpenKeyExA] 2: 0x%x\n", ulOptions);
+	if (S2EIsSymbolic(&samDesired, 1))
+		S2EPrintExpression((UINT_PTR)samDesired, "[RegOpenKeyExA] 3: ");
+	else
+		Message("  [RegOpenKeyExA] 3: 0x%x\n", samDesired);
+	if (S2EIsSymbolic(&phkResult, 1))
+		S2EPrintExpression((UINT_PTR)phkResult, "[RegOpenKeyExA] 4: ");
+	else 
+		Message("  [RegOpenKeyExA] 4: 0x%x\n", phkResult);
+#else
+	Message("  [RegOpenKeyExA] 0: 0x%x\n", hKey);
+	Message("  [RegOpenKeyExA] 1: 0x%x\n", lpSubKey);
+	Message("  [RegOpenKeyExA] *1: %s\n", lpSubKey);
+	Message("  [RegOpenKeyExA] 2: 0x%x\n", ulOptions);
+	Message("  [RegOpenKeyExA] 3: 0x%x\n", samDesired);
+	Message("  [RegOpenKeyExA] 4: 0x%x\n", phkResult);
+#endif
+
+	//RestoreData(RegOpenKeyExA, OldHookRegOpenKeyExA, LEN_OPCODES_HOOK_FUNCTION);
+	//LSTATUS ris = RegOpenKeyExA(
+	//	hKey,
+	//	lpSubKey,
+	//	ulOptions,
+	//	samDesired,
+	//	phkResult
+	//);
+	//HookDynamicFunction("advapi32", "RegOpenKeyExA", (funcpointer)&HookRegOpenKeyExA, OldHookRegOpenKeyExA);
+
+	Message("  [RegOpenKeyExA] ret: 0x%x\n", ERROR_SUCCESS);
 	return ERROR_SUCCESS;
 }
+
 
 unsigned char OldHookRegSetValueExA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 LSTATUS WINAPI HookRegSetValueExA(
@@ -554,25 +754,97 @@ LSTATUS WINAPI HookRegSetValueExA(
 	DWORD      cbData
 )
 {
-	if (S2EIsSymbolic((LPVOID)lpValueName, 1)) {
-		Message("Intercepted RegSetValueExA\n");
-		S2EPrintExpression(*lpValueName, "RegSetValueExA lpValueName");
-		Message("END SYMBOL");
-	}
+	char* hex_lpData = NULL;
+	Message("RegSetValueExA called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&hKey, 1))
+		S2EPrintExpression((UINT_PTR)hKey, "[RegSetValueExA] 0: ");
 	else
-		Message("Intercepted RegSetValueExA(%s)\n", lpValueName);
+		Message("  [RegSetValueExA] 0: 0x%x\n", hKey);
+	if (S2EIsSymbolic(&lpValueName, 1))
+		S2EPrintExpression((UINT_PTR)lpValueName, "[RegSetValueExA] 1: ");
+	else {
+		Message("  [RegSetValueExA] 1: 0x%x\n", lpValueName);
+		if (S2EIsSymbolic((PVOID)lpValueName, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpValueName), "[RegSetValueExA] *1: ");
+		else
+			Message("  [RegSetValueExA] *1: %s\n", lpValueName);
+	}
+	if (S2EIsSymbolic(&Reserved, 1))
+		S2EPrintExpression((UINT_PTR)Reserved, "[RegSetValueExA] 2: ");
+	else
+		Message("  [RegSetValueExA] 2: 0x%x\n", Reserved);
+	if (S2EIsSymbolic(&dwType, 1))
+		S2EPrintExpression((UINT_PTR)dwType, "[RegSetValueExA] 3: ");
+	else
+		Message("  [RegSetValueExA] 3: 0x%x\n", dwType);
+	if (S2EIsSymbolic(&lpData, 1))
+		S2EPrintExpression((UINT_PTR)lpData, "[RegSetValueExA] 4: ");
+	else {
+		Message("  [RegSetValueExA] 4: 0x%x\n", lpData);
+		if (S2EIsSymbolic((PVOID)lpData, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpData), "[RegSetValueExA] *4: ");
+		else {
+			hex_lpData = data_to_hex_string((char*)lpData, sizeof(lpData));
+			Message("  [RegSetValueExA] *4: %s\n", hex_lpData);
+		}
+	}
+	if (S2EIsSymbolic(&cbData, 1))
+		S2EPrintExpression((UINT_PTR)cbData, "[RegSetValueExA] 5: ");
+	else
+		Message("  [RegSetValueExA] 5: 0x%x\n", cbData);
+#else
+	Message("  [RegSetValueExA] 0: 0x%x\n", hKey);
+	Message("  [RegSetValueExA] 1: 0x%x\n", lpValueName);
+	Message("  [RegSetValueExA] *1: %s\n", lpValueName);
+	Message("  [RegSetValueExA] 2: 0x%x\n", Reserved);
+	Message("  [RegSetValueExA] 3: 0x%x\n", dwType);
+	Message("  [RegSetValueExA] 4: 0x%x\n", lpData);
+	hex_lpData = data_to_hex_string((char*)lpData, sizeof(lpData));
+	Message("  [RegSetValueExA] *4: %s\n", hex_lpData);
+	Message("  [RegSetValueExA] 5: 0x%x\n", cbData);
+#endif
+	free(hex_lpData);
+
+	//RestoreData(RegSetValueExA, OldHookRegSetValueExA, LEN_OPCODES_HOOK_FUNCTION);
+	//LSTATUS ris = RegSetValueExA(
+	//	hKey,
+	//	lpValueName,
+	//	Reserved,
+	//	dwType,
+	//	lpData,
+	//	cbData
+	//);
+	//HookDynamicFunction("advapi32", "RegSetValueExA", (funcpointer)&HookRegSetValueExA, OldHookRegSetValueExA);
+
+	Message("  [RegSetValueExA] ret: 0x%x\n", ERROR_SUCCESS);
 	return ERROR_SUCCESS;
 }
+
 
 unsigned char OldHookRegCloseKey[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 LSTATUS WINAPI HookRegCloseKey(
 	HKEY hKey
 )
 {
-	Message("Intercepted RegCloseKey(%08x)\n",
-		hKey);
+	Message("RegCloseKey called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&hKey, 1))
+		S2EPrintExpression((UINT_PTR)hKey, "[RegCloseKey] 0: ");
+	else
+		Message("  [RegCloseKey] 0: 0x%x\n", hKey);
+#else
+	Message("  [RegCloseKey] 0: 0x%x\n", hKey);
+#endif
+
+	//RestoreData(RegCloseKey, OldHookRegCloseKey, LEN_OPCODES_HOOK_FUNCTION);
+	//LSTATUS ris = RegCloseKey(hKey);
+	//HookDynamicFunction("advapi32", "RegCloseKey", (funcpointer)&HookRegCloseKey, OldHookRegCloseKey);
+
+	Message("  [RegCloseKey] ret: 0x%x\n", ERROR_SUCCESS);
 	return ERROR_SUCCESS;
 }
+
 
 // ************************************************************************************************************
 // KERNEL32 ***************************************************************************************************
@@ -606,28 +878,86 @@ HANDLE WINAPI HookFindFirstFileA(
 	Message("  [FindFirstFileA] 1: 0x%x\n", lpFindFileData);
 #endif
 
-	Message("  [FindFirstFileA] ret: %d\n", INVALID_HANDLE_VALUE);
+	//RestoreData(FindFirstFileA, OldHookFindFirstFileA, LEN_OPCODES_HOOK_FUNCTION);
+	//HANDLE ris = FindFirstFileA(
+	//	lpFileName,
+	//	lpFindFileData
+	//);
+	//HookDynamicFunction("kernel32", "FindFirstFileA", (funcpointer)&HookFindFirstFileA, OldHookFindFirstFileA);
+
+	Message("  [FindFirstFileA] ret: 0x%x\n", INVALID_HANDLE_VALUE);
 	return INVALID_HANDLE_VALUE;
 }
 
 unsigned char OldHookFindNextFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
-HANDLE WINAPI HookFindNextFileA(
+BOOL WINAPI HookFindNextFileA(
 	HANDLE             hFindFile,
 	LPWIN32_FIND_DATAA lpFindFileData
 )
 {
-	Message("Intercepted FindNextFileA\n");
-	return 0x0; // fail
+	char* hex_lpFindFileData = NULL;
+	Message("FindNextFileA called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&hFindFile, 1))
+		S2EPrintExpression((UINT_PTR)hFindFile, "[FindNextFileA] 0: ");
+	else
+		Message("  [FindNextFileA] 0: 0x%x\n", hFindFile);
+	if (S2EIsSymbolic(&lpFindFileData, 1))
+		S2EPrintExpression((UINT_PTR)lpFindFileData, "[FindNextFileA] 1: ");
+	else {
+		Message("  [FindNextFileA] 1: 0x%x\n", lpFindFileData);
+		if (S2EIsSymbolic((PVOID)lpFindFileData, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpFindFileData), "[FindNextFileA] *1: ");
+		else {
+			hex_lpFindFileData = data_to_hex_string((char*)lpFindFileData, sizeof(lpFindFileData));
+			Message("  [FindNextFileA] *1: %s\n", hex_lpFindFileData);
+		}
+	}
+#else
+	Message("  [FindNextFileA] 0: 0x%x\n", hFindFile);
+	Message("  [FindNextFileA] 1: 0x%x\n", lpFindFileData);
+	hex_lpFindFileData = data_to_hex_string((char*)lpFindFileData, sizeof(lpFindFileData));
+	Message("  [FindNextFileA] *1: %s\n", hex_lpFindFileData);
+#endif
+	free(hex_lpFindFileData);
+
+	//RestoreData(FindNextFileA, OldHookFindNextFileA, LEN_OPCODES_HOOK_FUNCTION);
+	//BOOL ris = FindNextFileA(
+	//	hFindFile,
+	//	lpFindFileData
+	//);
+	//HookDynamicFunction("kernel32", "FindNextFileA", (funcpointer)&HookFindNextFileA, OldHookFindNextFileA);
+
+	Message("  [FindNextFileA] ret: 0x%x\n", FALSE);
+	return FALSE;
 }
+
 
 unsigned char OldHookFindClose[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 BOOL WINAPI HookFindClose(
 	HANDLE hFindFile
 )
 {
-	Message("Intercepted FindClose\n");
+	Message("FindClose called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&hFindFile, 1))
+		S2EPrintExpression((UINT_PTR)hFindFile, "[FindClose] 0: ");
+	else
+		Message("  [FindClose] 0: 0x%x\n", hFindFile);
+#else
+	Message("  [FindClose] 0: 0x%x\n", hFindFile);
+#endif
+
+	//RestoreData(FindClose, OldHookFindClose, LEN_OPCODES_HOOK_FUNCTION);
+	//BOOL ris = FindClose(
+	//	hFindFile
+	//);
+	//HookDynamicFunction("kernel32", "FindClose", (funcpointer)&HookFindClose, OldHookFindClose);
+
+	Message("  [FindClose] ret: 0x%x\n", TRUE);
 	return TRUE;
 }
+
 
 unsigned char OldHookCreateDirectoryA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 BOOL WINAPI HookCreateDirectoryA(
@@ -676,15 +1006,25 @@ BOOL WINAPI HookRemoveDirectoryA(
 	LPCSTR lpPathName
 )
 {
-	if (S2EIsSymbolic((LPVOID)lpPathName, 1)) {
-		Message("Intercepted RemoveDirectoryA\n");
-		S2EPrintExpression(*lpPathName, "RemoveDirectoryA PathName");
-		Message("END SYMBOL");
+	Message("RemoveDirectoryA called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&lpPathName, 1))
+		S2EPrintExpression((UINT_PTR)lpPathName, "[RemoveDirectoryA] 0: ");
+	else {
+		Message("  [RemoveDirectoryA] 0: 0x%x\n", lpPathName);
+		if (S2EIsSymbolic((PVOID)lpPathName, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpPathName), "[RemoveDirectoryA] *0: ");
+		else
+			Message("  [RemoveDirectoryA] *0: %s\n", lpPathName);
 	}
-	else
-		Message("Intercepted RemoveDirectoryA(%s)\n", lpPathName);
-	return FALSE;
+#else
+	Message("  [RemoveDirectoryA] 0: 0x%x\n", lpPathName);
+	Message("  [RemoveDirectoryA] *0: %s\n", lpPathName);
+#endif
+	Message("  [RemoveDirectoryA] ret: 0\n");
+	return 0;
 }
+
 
 unsigned char OldHookCreateFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 HANDLE WINAPI HookCreateFileA(
@@ -773,46 +1113,65 @@ HANDLE WINAPI HookCreateFileA(
 	return ris;
 }
 
-
-unsigned char OldHookCloseHandle[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
-BOOL WINAPI HookCloseHandle(
-	_In_ HANDLE hObject
-)
-{
-	Message("Intercepted CloseHandle(%08x)\n",
-		hObject);
-	return TRUE;
-}
-
 unsigned char OldHookMoveFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 BOOL WINAPI HookMoveFileA(
 	LPCSTR lpExistingFileName,
 	LPCSTR lpNewFileName
 )
 {
-	if (S2EIsSymbolic((LPVOID)lpExistingFileName, 1) || S2EIsSymbolic((LPVOID)lpNewFileName, 1)) {
-		Message("Intercepted MoveFileA\n");
-		S2EPrintExpression(*lpExistingFileName, "MoveFileA ExistingFileName");
-		S2EPrintExpression(*lpNewFileName, "MoveFileA NewFileName");
-		Message("END SYMBOL");
+	Message("MoveFileA called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&lpExistingFileName, 1))
+		S2EPrintExpression((UINT_PTR)lpExistingFileName, "[MoveFileA] 0: ");
+	else {
+		Message("  [MoveFileA] 0: 0x%x\n", lpExistingFileName);
+		if (S2EIsSymbolic((PVOID)lpExistingFileName, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpExistingFileName), "[MoveFileA] *0: ");
+		else
+			Message("  [MoveFileA] *0: %s\n", lpExistingFileName);
 	}
-	else
-		Message("Intercepted MoveFileA(%s, %s)\n", lpExistingFileName, lpNewFileName);
+	if (S2EIsSymbolic(&lpNewFileName, 1))
+		S2EPrintExpression((UINT_PTR)lpNewFileName, "[MoveFileA] 1: ");
+	else {
+		Message("  [MoveFileA] 1: 0x%x\n", lpNewFileName);
+		if (S2EIsSymbolic((PVOID)lpNewFileName, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpNewFileName), "[MoveFileA] *1: ");
+		else
+			Message("  [MoveFileA] *1: %s\n", lpNewFileName);
+	}
+#else
+	Message("  [MoveFileA] 0: 0x%x\n", lpExistingFileName);
+	Message("  [MoveFileA] *0: %s\n", lpExistingFileName);
+	Message("  [MoveFileA] 1: 0x%x\n", lpNewFileName);
+	Message("  [MoveFileA] *1: %s\n", lpNewFileName);
+#endif
+	Message("  [MoveFileA] ret: 0x%x\n", FALSE);
 	return FALSE;
 }
+
 
 unsigned char OldHookDeleteFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 BOOL WINAPI HookDeleteFileA(
 	LPCSTR lpFileName
 )
 {
-	if (S2EIsSymbolic((LPVOID)lpFileName, 1)) {
-		Message("Intercepted DeleteFileA\n");
-		S2EPrintExpression(*lpFileName, "DeleteFileA FileName");
-		Message("END SYMBOL");
+	Message("DeleteFileA called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&lpFileName, 1))
+		S2EPrintExpression((UINT_PTR)lpFileName, "[DeleteFileA] 0: ");
+	else {
+		Message("  [DeleteFileA] 0: 0x%x\n", lpFileName);
+		if (S2EIsSymbolic((PVOID)lpFileName, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpFileName), "[DeleteFileA] *0: ");
+		else
+			Message("  [DeleteFileA] *0: %s\n", lpFileName);
 	}
-	else
-		Message("Intercepted DeleteFileA(%s)\n", lpFileName);
+#else
+	Message("  [DeleteFileA] 0: 0x%x\n", lpFileName);
+	Message("  [DeleteFileA] *0: %s\n", lpFileName);
+#endif
+
+	Message("  [DeleteFileA] ret: 0x%x\n", FALSE);
 	return FALSE;
 }
 
@@ -821,20 +1180,31 @@ UINT WINAPI HookGetDriveTypeA(
 	LPCSTR lpRootPathName
 )
 {
-	if (S2EIsSymbolic((LPVOID)lpRootPathName, 1)) {
-		Message("Intercepted GetDriveTypeA\n");
-		S2EPrintExpression(*lpRootPathName, "GetDriveTypeA PathName");
-		Message("END SYMBOL");
+	Message("GetDriveTypeA called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&lpRootPathName, 1))
+		S2EPrintExpression((UINT_PTR)lpRootPathName, "[GetDriveTypeA] 0: ");
+	else {
+		Message("  [GetDriveTypeA] 0: 0x%x\n", lpRootPathName);
+		if (S2EIsSymbolic((PVOID)lpRootPathName, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpRootPathName), "[GetDriveTypeA] *0: ");
+		else
+			Message("  [GetDriveTypeA] *0: %s\n", lpRootPathName);
 	}
-	else
-		Message("Intercepted GetDriveTypeA(%s)\n", lpRootPathName);
+#else
+	Message("  [GetDriveTypeA] 0: 0x%x\n", lpRootPathName);
+	Message("  [GetDriveTypeA] *0: %s\n", lpRootPathName);
+#endif
+	Message("  [GetDriveTypeA] ret: 0x%x\n", DRIVE_UNKNOWN);
 	return DRIVE_UNKNOWN;
 }
+
 
 unsigned char OldHookGetLogicalDrives[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 DWORD WINAPI HookGetLogicalDrives()
 {
-	Message("Intercepted GetLogicalDrives()\n");
+	Message("GetLogicalDrives called by 0x%x.\n", _ReturnAddress());
+	Message("  [GetLogicalDrives] ret: 0\n");
 	return 0; // no drive
 }
 
@@ -844,15 +1214,105 @@ UINT WINAPI HookWinExec(
 	UINT   uCmdShow
 )
 {
-	if (S2EIsSymbolic((LPVOID)lpCmdLine, 1)) {
-		Message("Intercepted WinExec\n");
-		S2EPrintExpression(*lpCmdLine, "WinExec command");
-		Message("END SYMBOL");
+	Message("WinExec called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&lpCmdLine, 1))
+		S2EPrintExpression((UINT_PTR)lpCmdLine, "[WinExec] 0: ");
+	else {
+		Message("  [WinExec] 0: 0x%x\n", lpCmdLine);
+		if (S2EIsSymbolic((PVOID)lpCmdLine, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpCmdLine), "[WinExec] *0: ");
+		else
+			Message("  [WinExec] *0: %s\n", lpCmdLine);
 	}
+	if (S2EIsSymbolic(&uCmdShow, 1))
+		S2EPrintExpression((UINT_PTR)uCmdShow, "[WinExec] 1: ");
 	else
-		Message("Intercepted WinExec(%s)\n", lpCmdLine);
+		Message("  [WinExec] 1: 0x%x\n", uCmdShow);
+#else
+	Message("  [WinExec] 0: 0x%x\n", lpCmdLine);
+	Message("  [WinExec] *0: %s\n", lpCmdLine);
+	Message("  [WinExec] 1: 0x%x\n", uCmdShow);
+#endif
+
+	Message("  [WinExec] ret: 0x%x\n", 32);
 	return 32;
 }
+
+unsigned char OldHookCloseHandle[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL WINAPI HookCloseHandle(
+	_In_ HANDLE hObject
+)
+{
+	Message("CloseHandle called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&hObject, 1))
+		S2EPrintExpression((UINT_PTR)hObject, "[CloseHandle] 0: ");
+	else
+		Message("  [CloseHandle] 0: 0x%x\n", hObject);
+#else
+	Message("  [CloseHandle] 0: 0x%x\n", hObject);
+#endif
+	Message("  [CloseHandle] ret: 0x%x\n", TRUE);
+	return TRUE;
+}
+
+unsigned char OldHookCreateMutexA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+HANDLE WINAPI HookCreateMutexA(
+	LPSECURITY_ATTRIBUTES lpMutexAttributes,
+	BOOL                  bInitialOwner,
+	LPCSTR                lpName
+)
+{
+	char* hex_lpMutexAttributes = NULL;
+	Message("CreateMutexA called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&lpMutexAttributes, 1))
+		S2EPrintExpression((UINT_PTR)lpMutexAttributes, "[CreateMutexA] 0: ");
+	else {
+		Message("  [CreateMutexA] 0: 0x%x\n", lpMutexAttributes);
+		if (S2EIsSymbolic((PVOID)lpMutexAttributes, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpMutexAttributes), "[CreateMutexA] *0: ");
+		else {
+			hex_lpMutexAttributes = data_to_hex_string((char*)lpMutexAttributes, sizeof(lpMutexAttributes));
+			Message("  [CreateMutexA] *0: %s\n", hex_lpMutexAttributes);
+		}
+	}
+	if (S2EIsSymbolic(&bInitialOwner, 1))
+		S2EPrintExpression((UINT_PTR)bInitialOwner, "[CreateMutexA] 1: ");
+	else
+		Message("  [CreateMutexA] 1: 0x%x\n", bInitialOwner);
+	if (S2EIsSymbolic(&lpName, 1))
+		S2EPrintExpression((UINT_PTR)lpName, "[CreateMutexA] 2: ");
+	else {
+		Message("  [CreateMutexA] 2: 0x%x\n", lpName);
+		if (S2EIsSymbolic((PVOID)lpName, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpName), "[CreateMutexA] *2: ");
+		else
+			Message("  [CreateMutexA] *2: %s\n", lpName);
+	}
+#else
+	Message("  [CreateMutexA] 0: 0x%x\n", lpMutexAttributes);
+	hex_lpMutexAttributes = data_to_hex_string((char*)lpMutexAttributes, sizeof(lpMutexAttributes));
+	Message("  [CreateMutexA] *0: %s\n", hex_lpMutexAttributes);
+	Message("  [CreateMutexA] 1: 0x%x\n", bInitialOwner);
+	Message("  [CreateMutexA] 2: 0x%x\n", lpName);
+	Message("  [CreateMutexA] *2: %s\n", lpName);
+#endif
+	free(hex_lpMutexAttributes);
+
+	RestoreData(CreateMutexA, OldHookCreateMutexA, LEN_OPCODES_HOOK_FUNCTION);
+	HANDLE ris = CreateMutexA(
+		lpMutexAttributes,
+		bInitialOwner,
+		lpName
+	);
+	HookDynamicFunction("kernel32", "CreateMutexA", (funcpointer)HookCreateMutexA, OldHookCreateMutexA);
+	Message("  [CreateMutexA] ret: 0x%x\n", ris);
+	return ris;
+}
+
+
 
 // ************************************************************************************************************
 // USER 32 ****************************************************************************************************
