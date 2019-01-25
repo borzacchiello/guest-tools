@@ -388,8 +388,14 @@ int WSAAPI recvHook(
 #else
 		if (len == 4)
 			buf[0] = 0x6;
-		else
-			buf[0] = 0x36;
+		else {
+			buf[0] = 0x18;
+			buf[1] = 0x4d;
+			buf[2] = 0xda;
+			buf[3] = 0x21;
+			buf[4] = 0x51;
+			buf[5] = 0x18;
+		}
 		callCounter++;
 #endif
 	}
@@ -845,9 +851,436 @@ LSTATUS WINAPI HookRegCloseKey(
 	return ERROR_SUCCESS;
 }
 
+// ************************************************************************************************************
+// MSVCRT ****************************************************************************************************
+
+unsigned char OldHookfopen[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+FILE *Hookfopen(
+	const char *filename,
+	const char *mode
+)
+{
+	char* hex_mode = NULL;
+	Message("*fopen called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&filename, 1))
+		S2EPrintExpression((UINT_PTR)filename, "[*fopen] 0: ");
+	else {
+		Message("  [*fopen] 0: 0x%x\n", filename);
+		if (S2EIsSymbolic((PVOID)filename, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)filename), "[*fopen] *0: ");
+		else {
+			Message("  [*fopen] *0: %s\n", filename);
+		}
+	}
+	if (S2EIsSymbolic(&mode, 1))
+		S2EPrintExpression((UINT_PTR)mode, "[*fopen] 1: ");
+	else {
+		Message("  [*fopen] 1: 0x%x\n", mode);
+		if (S2EIsSymbolic((PVOID)mode, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)mode), "[*fopen] *1: ");
+		else {
+			hex_mode = data_to_hex_string((char*)mode, sizeof(mode));
+			Message("  [*fopen] *1: %s\n", hex_mode);
+		}
+	}
+#else
+	Message("  [*fopen] 0: 0x%x\n", filename);
+	Message("  [*fopen] *0: %s\n", filename);
+	Message("  [*fopen] 1: 0x%x\n", mode);
+	hex_mode = data_to_hex_string((char*)mode, sizeof(mode));
+	Message("  [*fopen] *1: %s\n", hex_mode);
+#endif
+	free(hex_mode);
+	Message("  [*fopen] ret: 0\n");
+	return 0;
+}
+
+// ************************************************************************************************************
+// SHELL32 ****************************************************************************************************
+
+
+unsigned char OldHookShellExecuteA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+HINSTANCE HookShellExecuteA(
+	HWND   hwnd,
+	LPCSTR lpOperation,
+	LPCSTR lpFile,
+	LPCSTR lpParameters,
+	LPCSTR lpDirectory,
+	INT    nShowCmd
+)
+{
+	Message("ShellExecuteA called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&hwnd, 1))
+		S2EPrintExpression((UINT_PTR)hwnd, "[ShellExecuteA] 0: ");
+	else
+		Message("  [ShellExecuteA] 0: 0x%x\n", hwnd);
+	if (S2EIsSymbolic(&lpOperation, 1))
+		S2EPrintExpression((UINT_PTR)lpOperation, "[ShellExecuteA] 1: ");
+	else {
+		Message("  [ShellExecuteA] 1: 0x%x\n", lpOperation);
+		if (S2EIsSymbolic((PVOID)lpOperation, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpOperation), "[ShellExecuteA] *1: ");
+		else
+			Message("  [ShellExecuteA] *1: %s\n", lpOperation);
+	}
+	if (S2EIsSymbolic(&lpFile, 1))
+		S2EPrintExpression((UINT_PTR)lpFile, "[ShellExecuteA] 2: ");
+	else {
+		Message("  [ShellExecuteA] 2: 0x%x\n", lpFile);
+		if (S2EIsSymbolic((PVOID)lpFile, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpFile), "[ShellExecuteA] *2: ");
+		else
+			Message("  [ShellExecuteA] *2: %s\n", lpFile);
+	}
+	if (S2EIsSymbolic(&lpParameters, 1))
+		S2EPrintExpression((UINT_PTR)lpParameters, "[ShellExecuteA] 3: ");
+	else {
+		Message("  [ShellExecuteA] 3: 0x%x\n", lpParameters);
+		if (S2EIsSymbolic((PVOID)lpParameters, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpParameters), "[ShellExecuteA] *3: ");
+		else
+			Message("  [ShellExecuteA] *3: %s\n", lpParameters);
+	}
+	if (S2EIsSymbolic(&lpDirectory, 1))
+		S2EPrintExpression((UINT_PTR)lpDirectory, "[ShellExecuteA] 4: ");
+	else {
+		Message("  [ShellExecuteA] 4: 0x%x\n", lpDirectory);
+		if (S2EIsSymbolic((PVOID)lpDirectory, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpDirectory), "[ShellExecuteA] *4: ");
+		else
+			Message("  [ShellExecuteA] *4: %s\n", lpDirectory);
+	}
+	if (S2EIsSymbolic(&nShowCmd, 1))
+		S2EPrintExpression((UINT_PTR)nShowCmd, "[ShellExecuteA] 5: ");
+	else
+		Message("  [ShellExecuteA] 5: 0x%x\n", nShowCmd);
+#else
+	Message("  [ShellExecuteA] 0: 0x%x\n", hwnd);
+	Message("  [ShellExecuteA] 1: 0x%x\n", lpOperation);
+	Message("  [ShellExecuteA] *1: %s\n", lpOperation);
+	Message("  [ShellExecuteA] 2: 0x%x\n", lpFile);
+	Message("  [ShellExecuteA] *2: %s\n", lpFile);
+	Message("  [ShellExecuteA] 3: 0x%x\n", lpParameters);
+	Message("  [ShellExecuteA] *3: %s\n", lpParameters);
+	Message("  [ShellExecuteA] 4: 0x%x\n", lpDirectory);
+	Message("  [ShellExecuteA] *4: %s\n", lpDirectory);
+	Message("  [ShellExecuteA] 5: 0x%x\n", nShowCmd);
+#endif
+
+	Message("  [ShellExecuteA] ret: 0\n");
+	return 0;
+}
+
+
+// ************************************************************************************************************
+// WINMM ******************************************************************************************************
+
+unsigned char OldHookwaveInOpen[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+MMRESULT HookwaveInOpen(
+	LPHWAVEIN       phwi,
+	UINT            uDeviceID,
+	LPCWAVEFORMATEX pwfx,
+	DWORD_PTR       dwCallback,
+	DWORD_PTR       dwCallbackInstance,
+	DWORD           fdwOpen
+)
+{
+	char* hex_phwi = NULL;
+	char* hex_pwfx = NULL;
+	Message("waveInOpen called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&phwi, 1))
+		S2EPrintExpression((UINT_PTR)phwi, "[waveInOpen] 0: ");
+	else {
+		Message("  [waveInOpen] 0: 0x%x\n", phwi);
+		if (S2EIsSymbolic((PVOID)phwi, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)phwi), "[waveInOpen] *0: ");
+		else {
+			hex_phwi = data_to_hex_string((char*)phwi, sizeof(phwi));
+			Message("  [waveInOpen] *0: %s\n", hex_phwi);
+		}
+	}
+	if (S2EIsSymbolic(&uDeviceID, 1))
+		S2EPrintExpression((UINT_PTR)uDeviceID, "[waveInOpen] 1: ");
+	else
+		Message("  [waveInOpen] 1: 0x%x\n", uDeviceID);
+	if (S2EIsSymbolic(&pwfx, 1))
+		S2EPrintExpression((UINT_PTR)pwfx, "[waveInOpen] 2: ");
+	else {
+		Message("  [waveInOpen] 2: 0x%x\n", pwfx);
+		if (S2EIsSymbolic((PVOID)pwfx, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)pwfx), "[waveInOpen] *2: ");
+		else {
+			hex_pwfx = data_to_hex_string((char*)pwfx, sizeof(pwfx));
+			Message("  [waveInOpen] *2: %s\n", hex_pwfx);
+		}
+	}
+	if (S2EIsSymbolic(&dwCallback, 1))
+		S2EPrintExpression((UINT_PTR)dwCallback, "[waveInOpen] 3: ");
+	else
+		Message("  [waveInOpen] 3: 0x%x\n", dwCallback);
+	if (S2EIsSymbolic(&dwCallbackInstance, 1))
+		S2EPrintExpression((UINT_PTR)dwCallbackInstance, "[waveInOpen] 4: ");
+	else
+		Message("  [waveInOpen] 4: 0x%x\n", dwCallbackInstance);
+	if (S2EIsSymbolic(&fdwOpen, 1))
+		S2EPrintExpression((UINT_PTR)fdwOpen, "[waveInOpen] 5: ");
+	else
+		Message("  [waveInOpen] 5: 0x%x\n", fdwOpen);
+#else
+	Message("  [waveInOpen] 0: 0x%x\n", phwi);
+	hex_phwi = data_to_hex_string((char*)phwi, sizeof(phwi));
+	Message("  [waveInOpen] *0: %s\n", hex_phwi);
+	Message("  [waveInOpen] 1: 0x%x\n", uDeviceID);
+	Message("  [waveInOpen] 2: 0x%x\n", pwfx);
+	hex_pwfx = data_to_hex_string((char*)pwfx, sizeof(pwfx));
+	Message("  [waveInOpen] *2: %s\n", hex_pwfx);
+	Message("  [waveInOpen] 3: 0x%x\n", dwCallback);
+	Message("  [waveInOpen] 4: 0x%x\n", dwCallbackInstance);
+	Message("  [waveInOpen] 5: 0x%x\n", fdwOpen);
+#endif
+	free(hex_phwi);
+	free(hex_pwfx);
+	Message("  [waveInOpen] ret: 0x%x\n", MMSYSERR_NODRIVER);
+	return MMSYSERR_NODRIVER;
+}
 
 // ************************************************************************************************************
 // KERNEL32 ***************************************************************************************************
+
+
+unsigned char OldHookGetLocalTime[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+void WINAPI HookGetLocalTime(
+	LPSYSTEMTIME lpSystemTime
+)
+{
+	Message("GetLocalTime called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&lpSystemTime, 1))
+		S2EPrintExpression((UINT_PTR)lpSystemTime, "[GetLocalTime] 0: ");
+	else 
+		Message("  [GetLocalTime] 0: 0x%x\n", lpSystemTime);
+#else
+	Message("  [GetLocalTime] 0: 0x%x\n", lpSystemTime);
+#endif
+
+	RestoreData(GetLocalTime, OldHookGetLocalTime, LEN_OPCODES_HOOK_FUNCTION);
+	_SYSTEMTIME ris;
+	GetLocalTime(&ris);
+	memcpy(lpSystemTime, &ris, sizeof(ris));
+	HookDynamicFunction("kernel32", "GetLocalTime", (funcpointer)HookGetLocalTime, OldHookGetLocalTime);
+
+	char* hex_lpSystemTime = data_to_hex_string((char*)lpSystemTime, sizeof(lpSystemTime));
+	Message("  [GetLocalTime] write *0: %s\n", hex_lpSystemTime);
+	free(hex_lpSystemTime);
+}
+
+unsigned char OldHookGetCommandLineA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+LPSTR WINAPI HookGetCommandLineA()
+{
+	Message("GetCommandLineA called by 0x%x.\n", _ReturnAddress());
+	RestoreData(GetCommandLineA, OldHookGetCommandLineA, LEN_OPCODES_HOOK_FUNCTION);
+	LPSTR ris = GetCommandLineA();
+	HookDynamicFunction("kernel32", "GetCommandLineA", (funcpointer)HookGetCommandLineA, OldHookGetCommandLineA);
+	Message("  [GetCommandLineA] ret: %s\n", ris);
+	return ris;
+}
+
+unsigned char OldHookCreatePipe[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL WINAPI HookCreatePipe(
+	PHANDLE               hReadPipe,
+	PHANDLE               hWritePipe,
+	LPSECURITY_ATTRIBUTES lpPipeAttributes,
+	DWORD                 nSize
+)
+{
+	char* hex_lpPipeAttributes = NULL;
+	Message("CreatePipe called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&hReadPipe, 1))
+		S2EPrintExpression((UINT_PTR)hReadPipe, "[CreatePipe] 0: ");
+	else
+		Message("  [CreatePipe] 0: 0x%x\n", hReadPipe);
+	if (S2EIsSymbolic(&hWritePipe, 1))
+		S2EPrintExpression((UINT_PTR)hWritePipe, "[CreatePipe] 1: ");
+	else
+		Message("  [CreatePipe] 1: 0x%x\n", hWritePipe);
+	if (S2EIsSymbolic(&lpPipeAttributes, 1))
+		S2EPrintExpression((UINT_PTR)lpPipeAttributes, "[CreatePipe] 2: ");
+	else {
+		Message("  [CreatePipe] 2: 0x%x\n", lpPipeAttributes);
+		if (S2EIsSymbolic((PVOID)lpPipeAttributes, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpPipeAttributes), "[CreatePipe] *2: ");
+		else {
+			hex_lpPipeAttributes = data_to_hex_string((char*)lpPipeAttributes, sizeof(lpPipeAttributes));
+			Message("  [CreatePipe] *2: %s\n", hex_lpPipeAttributes);
+		}
+	}
+	if (S2EIsSymbolic(&nSize, 1))
+		S2EPrintExpression((UINT_PTR)nSize, "[CreatePipe] 3: ");
+	else
+		Message("  [CreatePipe] 3: 0x%x\n", nSize);
+#else
+	Message("  [CreatePipe] 0: 0x%x\n", hReadPipe);
+	Message("  [CreatePipe] 1: 0x%x\n", hWritePipe);
+	Message("  [CreatePipe] 2: 0x%x\n", lpPipeAttributes);
+	hex_lpPipeAttributes = data_to_hex_string((char*)lpPipeAttributes, sizeof(lpPipeAttributes));
+	Message("  [CreatePipe] *2: %s\n", hex_lpPipeAttributes);
+	Message("  [CreatePipe] 3: 0x%x\n", nSize);
+#endif
+
+	free(hex_lpPipeAttributes);
+	Message("  [CreatePipe] ret: 0\n");
+	return 0; // fail
+}
+
+
+unsigned char OldHookCreateProcessA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL WINAPI HookCreateProcessA(
+	LPCSTR                lpApplicationName,
+	LPSTR                 lpCommandLine,
+	LPSECURITY_ATTRIBUTES lpProcessAttributes,
+	LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	BOOL                  bInheritHandles,
+	DWORD                 dwCreationFlags,
+	LPVOID                lpEnvironment,
+	LPCSTR                lpCurrentDirectory,
+	LPSTARTUPINFOA        lpStartupInfo,
+	LPPROCESS_INFORMATION lpProcessInformation
+)
+{
+	char* hex_lpProcessAttributes = NULL;
+	char* hex_lpThreadAttributes = NULL;
+	char* hex_lpEnvironment = NULL;
+	char* hex_lpStartupInfo = NULL;
+	char* hex_lpProcessInformation = NULL;
+	Message("CreateProcessA called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&lpApplicationName, 1))
+		S2EPrintExpression((UINT_PTR)lpApplicationName, "[CreateProcessA] 0: ");
+	else {
+		Message("  [CreateProcessA] 0: 0x%x\n", lpApplicationName);
+		if (S2EIsSymbolic((PVOID)lpApplicationName, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpApplicationName), "[CreateProcessA] *0: ");
+		else
+			Message("  [CreateProcessA] *0: %s\n", lpApplicationName);
+	}
+	if (S2EIsSymbolic(&lpCommandLine, 1))
+		S2EPrintExpression((UINT_PTR)lpCommandLine, "[CreateProcessA] 1: ");
+	else {
+		Message("  [CreateProcessA] 1: 0x%x\n", lpCommandLine);
+		if (S2EIsSymbolic((PVOID)lpCommandLine, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpCommandLine), "[CreateProcessA] *1: ");
+		else
+			Message("  [CreateProcessA] *1: %s\n", lpCommandLine);
+	}
+	if (S2EIsSymbolic(&lpProcessAttributes, 1))
+		S2EPrintExpression((UINT_PTR)lpProcessAttributes, "[CreateProcessA] 2: ");
+	else {
+		Message("  [CreateProcessA] 2: 0x%x\n", lpProcessAttributes);
+		if (S2EIsSymbolic((PVOID)lpProcessAttributes, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpProcessAttributes), "[CreateProcessA] *2: ");
+		else {
+			hex_lpProcessAttributes = data_to_hex_string((char*)lpProcessAttributes, sizeof(lpProcessAttributes));
+			Message("  [CreateProcessA] *2: %s\n", hex_lpProcessAttributes);
+		}
+	}
+	if (S2EIsSymbolic(&lpThreadAttributes, 1))
+		S2EPrintExpression((UINT_PTR)lpThreadAttributes, "[CreateProcessA] 3: ");
+	else {
+		Message("  [CreateProcessA] 3: 0x%x\n", lpThreadAttributes);
+		if (S2EIsSymbolic((PVOID)lpThreadAttributes, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpThreadAttributes), "[CreateProcessA] *3: ");
+		else {
+			hex_lpThreadAttributes = data_to_hex_string((char*)lpThreadAttributes, sizeof(lpThreadAttributes));
+			Message("  [CreateProcessA] *3: %s\n", hex_lpThreadAttributes);
+		}
+	}
+	if (S2EIsSymbolic(&bInheritHandles, 1))
+		S2EPrintExpression((UINT_PTR)bInheritHandles, "[CreateProcessA] 4: ");
+	else
+		Message("  [CreateProcessA] 4: 0x%x\n", bInheritHandles);
+	if (S2EIsSymbolic(&dwCreationFlags, 1))
+		S2EPrintExpression((UINT_PTR)dwCreationFlags, "[CreateProcessA] 5: ");
+	else
+		Message("  [CreateProcessA] 5: 0x%x\n", dwCreationFlags);
+	if (S2EIsSymbolic(&lpEnvironment, 1))
+		S2EPrintExpression((UINT_PTR)lpEnvironment, "[CreateProcessA] 6: ");
+	else {
+		Message("  [CreateProcessA] 6: 0x%x\n", lpEnvironment);
+		if (S2EIsSymbolic((PVOID)lpEnvironment, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpEnvironment), "[CreateProcessA] *6: ");
+		else {
+			hex_lpEnvironment = data_to_hex_string((char*)lpEnvironment, sizeof(lpEnvironment));
+			Message("  [CreateProcessA] *6: %s\n", hex_lpEnvironment);
+		}
+	}
+	if (S2EIsSymbolic(&lpCurrentDirectory, 1))
+		S2EPrintExpression((UINT_PTR)lpCurrentDirectory, "[CreateProcessA] 7: ");
+	else {
+		Message("  [CreateProcessA] 7: 0x%x\n", lpCurrentDirectory);
+		if (S2EIsSymbolic((PVOID)lpCurrentDirectory, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpCurrentDirectory), "[CreateProcessA] *7: ");
+		else
+			Message("  [CreateProcessA] *7: %s\n", lpCurrentDirectory);
+	}
+	if (S2EIsSymbolic(&lpStartupInfo, 1))
+		S2EPrintExpression((UINT_PTR)lpStartupInfo, "[CreateProcessA] 8: ");
+	else {
+		Message("  [CreateProcessA] 8: 0x%x\n", lpStartupInfo);
+		if (S2EIsSymbolic((PVOID)lpStartupInfo, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpStartupInfo), "[CreateProcessA] *8: ");
+		else {
+			hex_lpStartupInfo = data_to_hex_string((char*)lpStartupInfo, sizeof(lpStartupInfo));
+			Message("  [CreateProcessA] *8: %s\n", hex_lpStartupInfo);
+		}
+	}
+	if (S2EIsSymbolic(&lpProcessInformation, 1))
+		S2EPrintExpression((UINT_PTR)lpProcessInformation, "[CreateProcessA] 9: ");
+	else {
+		Message("  [CreateProcessA] 9: 0x%x\n", lpProcessInformation);
+		if (S2EIsSymbolic((PVOID)lpProcessInformation, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpProcessInformation), "[CreateProcessA] *9: ");
+		else {
+			hex_lpProcessInformation = data_to_hex_string((char*)lpProcessInformation, sizeof(lpProcessInformation));
+			Message("  [CreateProcessA] *9: %s\n", hex_lpProcessInformation);
+		}
+	}
+#else
+	Message("  [CreateProcessA] 0: 0x%x\n", lpApplicationName);
+	Message("  [CreateProcessA] *0: %s\n", lpApplicationName);
+	Message("  [CreateProcessA] 1: 0x%x\n", lpCommandLine);
+	Message("  [CreateProcessA] *1: %s\n", lpCommandLine);
+	Message("  [CreateProcessA] 2: 0x%x\n", lpProcessAttributes);
+	hex_lpProcessAttributes = data_to_hex_string((char*)lpProcessAttributes, sizeof(lpProcessAttributes));
+	Message("  [CreateProcessA] *2: %s\n", hex_lpProcessAttributes);
+	Message("  [CreateProcessA] 3: 0x%x\n", lpThreadAttributes);
+	hex_lpThreadAttributes = data_to_hex_string((char*)lpThreadAttributes, sizeof(lpThreadAttributes));
+	Message("  [CreateProcessA] *3: %s\n", hex_lpThreadAttributes);
+	Message("  [CreateProcessA] 4: 0x%x\n", bInheritHandles);
+	Message("  [CreateProcessA] 5: 0x%x\n", dwCreationFlags);
+	Message("  [CreateProcessA] 6: 0x%x\n", lpEnvironment);
+	hex_lpEnvironment = data_to_hex_string((char*)lpEnvironment, sizeof(lpEnvironment));
+	Message("  [CreateProcessA] *6: %s\n", hex_lpEnvironment);
+	Message("  [CreateProcessA] 7: 0x%x\n", lpCurrentDirectory);
+	Message("  [CreateProcessA] *7: %s\n", lpCurrentDirectory);
+	Message("  [CreateProcessA] 8: 0x%x\n", lpStartupInfo);
+	hex_lpStartupInfo = data_to_hex_string((char*)lpStartupInfo, sizeof(lpStartupInfo));
+	Message("  [CreateProcessA] *8: %s\n", hex_lpStartupInfo);
+	Message("  [CreateProcessA] 9: 0x%x\n", lpProcessInformation);
+	hex_lpProcessInformation = data_to_hex_string((char*)lpProcessInformation, sizeof(lpProcessInformation));
+	Message("  [CreateProcessA] *9: %s\n", hex_lpProcessInformation);
+#endif
+	free(hex_lpProcessAttributes);
+	free(hex_lpThreadAttributes);
+	free(hex_lpEnvironment);
+	free(hex_lpStartupInfo);
+	free(hex_lpProcessInformation);
+	Message("  [CreateProcessA] ret: 0x%x\n", 0);
+	return 0; // fail
+}
 
 unsigned char OldHookFindFirstFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 HANDLE WINAPI HookFindFirstFileA(
@@ -1253,8 +1686,12 @@ BOOL WINAPI HookCloseHandle(
 #else
 	Message("  [CloseHandle] 0: 0x%x\n", hObject);
 #endif
-	Message("  [CloseHandle] ret: 0x%x\n", TRUE);
-	return TRUE;
+
+	RestoreData(CloseHandle, OldHookCloseHandle, LEN_OPCODES_HOOK_FUNCTION);
+	BOOL res = CloseHandle(hObject);
+	HookDynamicFunction("kernel32", "CloseHandle", (funcpointer)&HookCloseHandle, OldHookCloseHandle);
+	Message("  [CloseHandle] ret: 0x%x\n", res);
+	return res;
 }
 
 unsigned char OldHookCreateMutexA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };

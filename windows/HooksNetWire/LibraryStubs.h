@@ -5,6 +5,8 @@
 #include <winsock2.h>
 #include <Ws2tcpip.h>
 #include <wincrypt.h>
+#include <Mmsystem.h>
+#include <stdio.h>
 #include "Util.h"
 
 extern unsigned char oldWSAStartupHook[LEN_OPCODES_HOOK_FUNCTION];
@@ -132,8 +134,74 @@ extern unsigned char OldHookRegCloseKey[LEN_OPCODES_HOOK_FUNCTION];
 LSTATUS WINAPI HookRegCloseKey(
 	HKEY hKey
 );
+
+// ************************************************************************************************************
+// MSVCRT ****************************************************************************************************
+
+extern unsigned char OldHookfopen[LEN_OPCODES_HOOK_FUNCTION];
+FILE *Hookfopen(
+	const char *filename,
+	const char *mode
+);
+
+// ************************************************************************************************************
+// SHELL32 ****************************************************************************************************
+
+extern unsigned char OldHookShellExecuteA[LEN_OPCODES_HOOK_FUNCTION];
+HINSTANCE HookShellExecuteA(
+	HWND   hwnd,
+	LPCSTR lpOperation,
+	LPCSTR lpFile,
+	LPCSTR lpParameters,
+	LPCSTR lpDirectory,
+	INT    nShowCmd
+);
+
+// ************************************************************************************************************
+// WINMM ******************************************************************************************************
+
+extern unsigned char OldHookwaveInOpen[LEN_OPCODES_HOOK_FUNCTION];
+MMRESULT HookwaveInOpen(
+	LPHWAVEIN       phwi,
+	UINT            uDeviceID,
+	LPCWAVEFORMATEX pwfx,
+	DWORD_PTR       dwCallback,
+	DWORD_PTR       dwCallbackInstance,
+	DWORD           fdwOpen
+);
+
 // ************************************************************************************************************
 // KERNEL32 ***************************************************************************************************
+
+extern unsigned char OldHookGetLocalTime[LEN_OPCODES_HOOK_FUNCTION];
+void WINAPI HookGetLocalTime(
+	LPSYSTEMTIME lpSystemTime
+);
+
+extern unsigned char OldHookGetCommandLineA[LEN_OPCODES_HOOK_FUNCTION];
+LPSTR WINAPI HookGetCommandLineA();
+
+extern unsigned char OldHookCreatePipe[LEN_OPCODES_HOOK_FUNCTION];
+BOOL WINAPI HookCreatePipe(
+	PHANDLE               hReadPipe,
+	PHANDLE               hWritePipe,
+	LPSECURITY_ATTRIBUTES lpPipeAttributes,
+	DWORD                 nSize
+);
+
+extern unsigned char OldHookCreateProcessA[LEN_OPCODES_HOOK_FUNCTION];
+BOOL WINAPI HookCreateProcessA(
+	LPCSTR                lpApplicationName,
+	LPSTR                 lpCommandLine,
+	LPSECURITY_ATTRIBUTES lpProcessAttributes,
+	LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	BOOL                  bInheritHandles,
+	DWORD                 dwCreationFlags,
+	LPVOID                lpEnvironment,
+	LPCSTR                lpCurrentDirectory,
+	LPSTARTUPINFOA        lpStartupInfo,
+	LPPROCESS_INFORMATION lpProcessInformation
+);
 
 extern unsigned char OldHookCreateMutexA[LEN_OPCODES_HOOK_FUNCTION];
 HANDLE WINAPI HookCreateMutexA(

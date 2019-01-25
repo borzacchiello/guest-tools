@@ -179,13 +179,22 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 
 		// HookFunction((funcpointer)ADDR_CREATE_DIRECTORY, (funcpointer)&targetTMP, oldTargetTMP);
 
-		HookDynamicFunction("advapi32", "CryptCreateHash", (funcpointer)HookCryptCreateHash, OldHookCryptCreateHash);
-		HookDynamicFunction("advapi32", "GetUserNameA", (funcpointer)HookGetUserNameA, OldHookGetUserNameA);
+		HookDynamicFunction("advapi32", "CryptCreateHash", (funcpointer)&HookCryptCreateHash, OldHookCryptCreateHash);
+		HookDynamicFunction("advapi32", "GetUserNameA", (funcpointer)&HookGetUserNameA, OldHookGetUserNameA);
 		HookDynamicFunction("advapi32", "RegOpenKeyExA", (funcpointer)&HookRegOpenKeyExA, OldHookRegOpenKeyExA);
 		HookDynamicFunction("advapi32", "RegSetValueExA", (funcpointer)&HookRegSetValueExA, OldHookRegSetValueExA);
 		HookDynamicFunction("advapi32", "RegCloseKey", (funcpointer)&HookRegCloseKey, OldHookRegCloseKey);
 
-		HookDynamicFunction("kernel32", "CreateMutexA", (funcpointer)HookCreateMutexA, OldHookCreateMutexA);
+		HookDynamicFunction("msvcrt", "fopen", (funcpointer)Hookfopen, OldHookfopen);
+
+		HookDynamicFunction("winmm", "waveInOpen", (funcpointer)HookwaveInOpen, OldHookwaveInOpen);
+
+		HookDynamicFunction("kernel32", "GetLocalTime", (funcpointer)HookGetLocalTime, OldHookGetLocalTime);
+		HookDynamicFunction("shell32", "ShellExecuteA", (funcpointer)HookShellExecuteA, OldHookShellExecuteA);
+		HookDynamicFunction("kernel32", "CreatePipe", (funcpointer)HookCreatePipe, OldHookCreatePipe);
+		HookDynamicFunction("kernel32", "GetCommandLineA", (funcpointer)HookGetCommandLineA, OldHookGetCommandLineA);
+		HookDynamicFunction("kernel32", "CreateProcessA", (funcpointer)&HookCreateProcessA, OldHookCreateProcessA);
+		HookDynamicFunction("kernel32", "CreateMutexA", (funcpointer)&HookCreateMutexA, OldHookCreateMutexA);
 		HookDynamicFunction("kernel32", "FindFirstFileA", (funcpointer)&HookFindFirstFileA, OldHookFindFirstFileA);
 		HookDynamicFunction("kernel32", "FindNextFileA", (funcpointer)&HookFindNextFileA, OldHookFindNextFileA);
 		HookDynamicFunction("kernel32", "FindClose", (funcpointer)&HookFindClose, OldHookFindClose);
@@ -194,13 +203,13 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		HookDynamicFunction("kernel32", "MoveFileA", (funcpointer)&HookMoveFileA, OldHookMoveFileA);
 		HookDynamicFunction("kernel32", "DeleteFileA", (funcpointer)&HookDeleteFileA, OldHookDeleteFileA);
 		HookDynamicFunction("kernel32", "CreateFileA", (funcpointer)&HookCreateFileA, OldHookCreateFileA);
-		HookDynamicFunction("kernel32", "CloseHandle", (funcpointer)&HookCloseHandle, OldHookCloseHandle);
+		// HookDynamicFunction("kernel32", "CloseHandle", (funcpointer)&HookCloseHandle, OldHookCloseHandle);
 		HookDynamicFunction("kernel32", "GetDriveTypeA", (funcpointer)&HookGetDriveTypeA, OldHookGetDriveTypeA);
 		HookDynamicFunction("kernel32", "GetLogicalDrives", (funcpointer)&HookGetLogicalDrives, OldHookGetLogicalDrives);
 		HookDynamicFunction("kernel32", "WinExec", (funcpointer)&HookWinExec, OldHookWinExec);
 
-		HookDynamicFunction("user32", "CreateWindowExA", (funcpointer)HookCreateWindowExA, OldHookCreateWindowExA);
-		HookDynamicFunction("msvcrt", "_beginthreadex", (funcpointer)_beginthreadexHook, Old_beginthreadexHook);
+		HookDynamicFunction("user32", "CreateWindowExA", (funcpointer)&HookCreateWindowExA, OldHookCreateWindowExA);
+		HookDynamicFunction("msvcrt", "_beginthreadex", (funcpointer)&_beginthreadexHook, Old_beginthreadexHook);
 
 		Message("Hooks done.\n");
 	}
