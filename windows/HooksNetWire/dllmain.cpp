@@ -7,6 +7,7 @@
 extern "C" {
 #include <s2e/s2e.h>
 }
+#include <intrin.h>
 
 #define GET_FILE_PATH_ADDRESS 0x409BAB //0x0405073
 #define ADDR_AFTER_INIT 0x0402027
@@ -15,7 +16,8 @@ extern "C" {
 #define ADDR_AFTER_SWITCH 0x0405214
 #define ADDR_AVOID_2 0x04020DE
 
-#define ADDR_AVOID_3 0x040D3B6 
+#define ADDR_AVOID_3 0x040D3B6
+
 #define ADDR_TARGET 0x040D3AD
 #define ADDR_FIRST_CMD 0x04010EB
 
@@ -33,9 +35,20 @@ BOOL executed = FALSE;
 static BOOL command_ex = FALSE;
 int s2eVersion = 0;
 
+long long vals[] = { -6293595036912659288, -1663823975275766040 };
+int timeCallCounter = 0;
 unsigned char oldMyTime[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 long long myTime() {
+	Message("time called by 0x%x\n", _ReturnAddress());
+	// if (timeCallCounter == 0 || timeCallCounter == 1) return vals[timeCallCounter++];
+#if S2E
+	// long long ris;
+	// S2EMakeConcolic(&ris, sizeof(long long), "time");
+	// return ris;
 	return 0;
+#else
+	return 0;
+#endif
 }
 
 unsigned char oldMyMalloc[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
@@ -147,16 +160,17 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 #endif
 		if (!s2eVersion) InitDebugFile();
 		Message("Initialization phase.\n");
-		HookFunction((funcpointer)MALLOC_ADDR, (funcpointer)&myMalloc, oldMyMalloc);
-		HookFunction((funcpointer)FREE_ADDR, (funcpointer)&myFree, oldMyFree);
+		//HookFunction((funcpointer)MALLOC_ADDR, (funcpointer)&myMalloc, oldMyMalloc);
+		//HookFunction((funcpointer)FREE_ADDR, (funcpointer)&myFree, oldMyFree);
 		HookFunction((funcpointer)TIME_ADDR, (funcpointer)&myTime, oldMyTime);
 		HookFunction((funcpointer)GET_FILE_PATH_ADDRESS, (funcpointer)get_file_path_stub, oldGetFilePath);
 #if S2E
 		// HookInstruction((funcpointer)ADDR_CMD_4, (funcpointer)cmd_4, (funcpointer)ADDR_CMD_4, oldCmd_4);
 
-		// HookFunction((funcpointer)ADDR_AVOID_3, (funcpointer)avoidTMP,oldAvoidTMP);
-		// HookFunction((funcpointer)ADDR_AVOID_3, (funcpointer)exit_stub, oldExit_stub);
+		// CHECK KEY
+		HookFunction((funcpointer)ADDR_AVOID_3, (funcpointer)avoidTMP,oldAvoidTMP);
 		// HookFunction((funcpointer)ADDR_TARGET, (funcpointer)targetTMP, oldTargetTMP);
+		// *********
 
 		HookFunction((funcpointer)ADDR_AFTER_SWITCH, (funcpointer)after_switch, oldAfterSwitch);
 		// HookFunction((funcpointer)ADDR_AVOID_2, (funcpointer)exit_stub, oldExit_stub);
@@ -189,7 +203,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 
 		HookDynamicFunction("winmm", "waveInOpen", (funcpointer)HookwaveInOpen, OldHookwaveInOpen);
 
-		HookDynamicFunction("kernel32", "GetLocalTime", (funcpointer)HookGetLocalTime, OldHookGetLocalTime);
+		// HookDynamicFunction("kernel32", "GetLocalTime", (funcpointer)HookGetLocalTime, OldHookGetLocalTime);
 		HookDynamicFunction("shell32", "ShellExecuteA", (funcpointer)HookShellExecuteA, OldHookShellExecuteA);
 		HookDynamicFunction("kernel32", "CreatePipe", (funcpointer)HookCreatePipe, OldHookCreatePipe);
 		HookDynamicFunction("kernel32", "GetCommandLineA", (funcpointer)HookGetCommandLineA, OldHookGetCommandLineA);

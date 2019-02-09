@@ -32,6 +32,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HookDelphi_1", "HookDelphi_
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HooksNetWire", "HooksNetWire\HooksNetWire.vcxproj", "{BB7DA05C-56A2-49DA-892E-4FAD5D63B0C3}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "simple_if", "simple_if\simple_if.vcxproj", "{38375A7D-4F75-4956-AB3B-F042DAB5EABA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -120,6 +122,14 @@ Global
 		{BB7DA05C-56A2-49DA-892E-4FAD5D63B0C3}.Release|Win32.Build.0 = Release|Win32
 		{BB7DA05C-56A2-49DA-892E-4FAD5D63B0C3}.Release|x64.ActiveCfg = Release|x64
 		{BB7DA05C-56A2-49DA-892E-4FAD5D63B0C3}.Release|x64.Build.0 = Release|x64
+		{38375A7D-4F75-4956-AB3B-F042DAB5EABA}.Debug|Win32.ActiveCfg = Debug|Win32
+		{38375A7D-4F75-4956-AB3B-F042DAB5EABA}.Debug|Win32.Build.0 = Debug|Win32
+		{38375A7D-4F75-4956-AB3B-F042DAB5EABA}.Debug|x64.ActiveCfg = Debug|x64
+		{38375A7D-4F75-4956-AB3B-F042DAB5EABA}.Debug|x64.Build.0 = Debug|x64
+		{38375A7D-4F75-4956-AB3B-F042DAB5EABA}.Release|Win32.ActiveCfg = Release|Win32
+		{38375A7D-4F75-4956-AB3B-F042DAB5EABA}.Release|Win32.Build.0 = Release|Win32
+		{38375A7D-4F75-4956-AB3B-F042DAB5EABA}.Release|x64.ActiveCfg = Release|x64
+		{38375A7D-4F75-4956-AB3B-F042DAB5EABA}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
