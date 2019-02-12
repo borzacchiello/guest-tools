@@ -187,6 +187,13 @@ MMRESULT WINAPI HookwaveInOpen(
 // ************************************************************************************************************
 // KERNEL32 ***************************************************************************************************
 
+extern unsigned char OldHookGetFileAttributesExA[LEN_OPCODES_HOOK_FUNCTION];
+BOOL WINAPI HookGetFileAttributesExA(
+	LPCSTR                 lpFileName,
+	GET_FILEEX_INFO_LEVELS fInfoLevelId,
+	LPVOID                 lpFileInformation
+);
+
 extern unsigned char OldHookOpenProcess[LEN_OPCODES_HOOK_FUNCTION];
 HANDLE WINAPI HookOpenProcess(
 	DWORD dwDesiredAccess,
@@ -318,7 +325,73 @@ UINT WINAPI HookWinExec(
 );
 
 // ************************************************************************************************************
+// GDI32 ******************************************************************************************************
+
+extern unsigned char OldHookCreateCompatibleBitmap[LEN_OPCODES_HOOK_FUNCTION];
+HBITMAP WINAPI HookCreateCompatibleBitmap(
+	HDC hdc,
+	int cx,
+	int cy
+);
+
+// ************************************************************************************************************
 // USER32 *****************************************************************************************************
+
+extern unsigned char OldHookSendMessageA[LEN_OPCODES_HOOK_FUNCTION];
+LRESULT WINAPI HookSendMessageA(
+	HWND   hWnd,
+	UINT   Msg,
+	WPARAM wParam,
+	LPARAM lParam
+);
+
+extern unsigned char OldHookGetDC[LEN_OPCODES_HOOK_FUNCTION];
+HDC WINAPI HookGetDC(
+	HWND hWnd
+);
+
+extern unsigned char OldHookGetDesktopWindow[LEN_OPCODES_HOOK_FUNCTION];
+HWND WINAPI HookGetDesktopWindow();
+
+extern unsigned char OldHookGetSystemMetrics[LEN_OPCODES_HOOK_FUNCTION];
+int WINAPI HookGetSystemMetrics(
+	int nIndex
+);
+
+extern unsigned char OldHookSetCursorPos[LEN_OPCODES_HOOK_FUNCTION];
+BOOL WINAPI HookSetCursorPos(
+	int X,
+	int Y
+);
+
+extern unsigned char OldHookmouse_event[LEN_OPCODES_HOOK_FUNCTION];
+void WINAPI Hookmouse_event(
+	DWORD     dwFlags,
+	DWORD     dx,
+	DWORD     dy,
+	DWORD     dwData,
+	ULONG_PTR dwExtraInfo
+);
+
+extern unsigned char OldHookkeybd_event[LEN_OPCODES_HOOK_FUNCTION];
+void WINAPI Hookkeybd_event(
+	BYTE      bVk,
+	BYTE      bScan,
+	DWORD     dwFlags,
+	ULONG_PTR dwExtraInfo
+);
+
+extern unsigned char OldHookSetWindowTextA[LEN_OPCODES_HOOK_FUNCTION];
+BOOL WINAPI HookSetWindowTextA(
+	HWND   hWnd,
+	LPCSTR lpString
+);
+
+extern unsigned char OldHookShowWindow[LEN_OPCODES_HOOK_FUNCTION];
+BOOL WINAPI HookShowWindow(
+	HWND hWnd,
+	int  nCmdShow
+);
 
 extern unsigned char OldHookEnumWindows[LEN_OPCODES_HOOK_FUNCTION];
 BOOL WINAPI HookEnumWindows(

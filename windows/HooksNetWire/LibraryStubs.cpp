@@ -1139,6 +1139,53 @@ MMRESULT WINAPI HookwaveInOpen(
 // ************************************************************************************************************
 // KERNEL32 ***************************************************************************************************
 
+unsigned char OldHookGetFileAttributesExA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL WINAPI HookGetFileAttributesExA(
+	LPCSTR                 lpFileName,
+	GET_FILEEX_INFO_LEVELS fInfoLevelId,
+	LPVOID                 lpFileInformation
+)
+{
+	char* hex_lpFileInformation = NULL;
+	Message("GetFileAttributesExA called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&lpFileName, 1))
+		S2EPrintExpression((UINT_PTR)lpFileName, "[GetFileAttributesExA] 0: ");
+	else {
+		Message("  [GetFileAttributesExA] 0: 0x%x\n", lpFileName);
+		if (S2EIsSymbolic((PVOID)lpFileName, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpFileName), "[GetFileAttributesExA] *0: ");
+		else
+			Message("  [GetFileAttributesExA] *0: %s\n", lpFileName);
+	}
+	if (S2EIsSymbolic(&fInfoLevelId, 1))
+		S2EPrintExpression((UINT_PTR)fInfoLevelId, "[GetFileAttributesExA] 1: ");
+	else
+		Message("  [GetFileAttributesExA] 1: 0x%x\n", fInfoLevelId);
+	if (S2EIsSymbolic(&lpFileInformation, 1))
+		S2EPrintExpression((UINT_PTR)lpFileInformation, "[GetFileAttributesExA] 2: ");
+	else {
+		Message("  [GetFileAttributesExA] 2: 0x%x\n", lpFileInformation);
+		if (S2EIsSymbolic((PVOID)lpFileInformation, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpFileInformation), "[GetFileAttributesExA] *2: ");
+		else {
+			hex_lpFileInformation = data_to_hex_string((char*)lpFileInformation, sizeof(lpFileInformation));
+			Message("  [GetFileAttributesExA] *2: %s\n", hex_lpFileInformation);
+		}
+	}
+#else
+	Message("  [GetFileAttributesExA] 0: 0x%x\n", lpFileName);
+	Message("  [GetFileAttributesExA] *0: %s\n", lpFileName);
+	Message("  [GetFileAttributesExA] 1: 0x%x\n", fInfoLevelId);
+	Message("  [GetFileAttributesExA] 2: 0x%x\n", lpFileInformation);
+	hex_lpFileInformation = data_to_hex_string((char*)lpFileInformation, sizeof(lpFileInformation));
+	Message("  [GetFileAttributesExA] *2: %s\n", hex_lpFileInformation);
+#endif
+	free(hex_lpFileInformation);
+	Message("  [GetFileAttributesExA] ret: 0\n");
+	return 0;
+}
+
 unsigned char OldHookOpenProcess[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 HANDLE WINAPI HookOpenProcess(
 	DWORD dwDesiredAccess,
@@ -1201,14 +1248,14 @@ void WINAPI HookSleep(
 	DWORD dwMilliseconds
 )
 {
-	Message("HookSleep called by 0x%x.\n", _ReturnAddress());
+	Message("Sleep called by 0x%x.\n", _ReturnAddress());
 #if S2E
 	if (S2EIsSymbolic(&dwMilliseconds, 1))
-		S2EPrintExpression((UINT_PTR)dwMilliseconds, "[HookSleep] 0: ");
+		S2EPrintExpression((UINT_PTR)dwMilliseconds, "[Sleep] 0: ");
 	else
-		Message("  [HookSleep] 0: 0x%x\n", dwMilliseconds);
+		Message("  [Sleep] 0: 0x%x\n", dwMilliseconds);
 #else
-	Message("  [HookSleep] 0: 0x%x\n", dwMilliseconds);
+	Message("  [Sleep] 0: 0x%x\n", dwMilliseconds);
 #endif
 
 }
@@ -1939,7 +1986,348 @@ HANDLE WINAPI HookCreateMutexA(
 
 
 // ************************************************************************************************************
+// GDI 32 *****************************************************************************************************
+
+unsigned char OldHookCreateCompatibleBitmap[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+HBITMAP WINAPI HookCreateCompatibleBitmap(
+	HDC hdc,
+	int cx,
+	int cy
+)
+{
+	Message("CreateCompatibleBitmap called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&hdc, 1))
+		S2EPrintExpression((UINT_PTR)hdc, "[CreateCompatibleBitmap] 0: ");
+	else
+		Message("  [CreateCompatibleBitmap] 0: 0x%x\n", hdc);
+	if (S2EIsSymbolic(&cx, 1))
+		S2EPrintExpression((UINT_PTR)cx, "[CreateCompatibleBitmap] 1: ");
+	else
+		Message("  [CreateCompatibleBitmap] 1: 0x%x\n", cx);
+	if (S2EIsSymbolic(&cy, 1))
+		S2EPrintExpression((UINT_PTR)cy, "[CreateCompatibleBitmap] 2: ");
+	else
+		Message("  [CreateCompatibleBitmap] 2: 0x%x\n", cy);
+#else
+	Message("  [CreateCompatibleBitmap] 0: 0x%x\n", hdc);
+	Message("  [CreateCompatibleBitmap] 1: 0x%x\n", cx);
+	Message("  [CreateCompatibleBitmap] 2: 0x%x\n", cy);
+#endif
+
+	RestoreData((LPVOID)CreateCompatibleBitmap, OldHookCreateCompatibleBitmap, LEN_OPCODES_HOOK_FUNCTION);
+	HBITMAP ris = CreateCompatibleBitmap(
+		hdc,
+		cx,
+		cy
+	);
+	HookDynamicFunction("gdi32", "CreateCompatibleBitmap", (funcpointer)HookCreateCompatibleBitmap, OldHookCreateCompatibleBitmap);
+
+	Message("  [CreateCompatibleBitmap] ret: 0x%x\n", ris);
+	return ris;
+}
+
+// ************************************************************************************************************
 // USER 32 ****************************************************************************************************
+
+unsigned char OldHookSendMessageA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+LRESULT WINAPI HookSendMessageA(
+	HWND   hWnd,
+	UINT   Msg,
+	WPARAM wParam,
+	LPARAM lParam
+)
+{
+	char* hex_lParam = NULL;
+	Message("SendMessageA called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&hWnd, 1))
+		S2EPrintExpression((UINT_PTR)hWnd, "[SendMessageA] 0: ");
+	else
+		Message("  [SendMessageA] 0: 0x%x\n", hWnd);
+	if (S2EIsSymbolic(&Msg, 1))
+		S2EPrintExpression((UINT_PTR)Msg, "[SendMessageA] 1: ");
+	else
+		Message("  [SendMessageA] 1: 0x%x\n", Msg);
+	if (S2EIsSymbolic(&wParam, 1))
+		S2EPrintExpression((UINT_PTR)wParam, "[SendMessageA] 2: ");
+	else
+		Message("  [SendMessageA] 2: 0x%x\n", wParam);
+	if (S2EIsSymbolic(&lParam, 1))
+		S2EPrintExpression((UINT_PTR)lParam, "[SendMessageA] 3: ");
+	else {
+		Message("  [SendMessageA] 3: 0x%x\n", lParam);
+		if (S2EIsSymbolic((PVOID)lParam, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lParam), "[SendMessageA] *3: ");
+		else {
+			hex_lParam = data_to_hex_string((char*)lParam, sizeof(lParam));
+			Message("  [SendMessageA] *3: %s\n", hex_lParam);
+		}
+	}
+#else
+	Message("  [SendMessageA] 0: 0x%x\n", hWnd);
+	Message("  [SendMessageA] 1: 0x%x\n", Msg);
+	Message("  [SendMessageA] 2: 0x%x\n", wParam);
+	Message("  [SendMessageA] 3: 0x%x\n", lParam);
+	hex_lParam = data_to_hex_string((char*)lParam, sizeof(lParam));
+	Message("  [SendMessageA] *3: %s\n", hex_lParam);
+#endif
+	free(hex_lParam);
+	Message("  [SendMessageA] ret: 0\n");
+	return 0;
+}
+
+unsigned char OldHookGetDC[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+HDC WINAPI HookGetDC(
+	HWND hWnd
+)
+{
+	Message("GetDC called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&hWnd, 1))
+		S2EPrintExpression((UINT_PTR)hWnd, "[GetDC] 0: ");
+	else
+		Message("  [GetDC] 0: 0x%x\n", hWnd);
+#else
+	Message("  [GetDC] 0: 0x%x\n", hWnd);
+#endif
+
+	RestoreData((LPVOID)GetDC, OldHookGetDC, LEN_OPCODES_HOOK_FUNCTION);
+	HDC ris = GetDC(hWnd);
+	HookDynamicFunction("user32", "GetDC", (funcpointer)HookGetDC, OldHookGetDC);
+
+	Message("  [GetDC] ret: 0x%x\n", ris);
+	return ris;
+}
+
+unsigned char OldHookGetDesktopWindow[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+HWND WINAPI HookGetDesktopWindow()
+{
+	Message("GetDesktopWindow called by 0x%x.\n", _ReturnAddress());
+
+	RestoreData((LPVOID)GetDesktopWindow, OldHookGetDesktopWindow, LEN_OPCODES_HOOK_FUNCTION);
+	HWND ris = GetDesktopWindow();
+	HookDynamicFunction("user32", "GetDesktopWindow", (funcpointer)HookGetDesktopWindow, OldHookGetDesktopWindow);
+
+	Message("  [GetDesktopWindow] ret: 0x%x\n", ris);
+	return ris;
+}
+
+
+unsigned char OldHookGetSystemMetrics[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+int WINAPI HookGetSystemMetrics(
+	int nIndex
+)
+{
+	Message("GetSystemMetrics called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&nIndex, 1))
+		S2EPrintExpression((UINT_PTR)nIndex, "[GetSystemMetrics] 0: ");
+	else
+		Message("  [GetSystemMetrics] 0: 0x%x\n", nIndex);
+#else
+	Message("  [GetSystemMetrics] 0: 0x%x\n", nIndex);
+#endif
+
+	RestoreData((LPVOID)GetSystemMetrics, OldHookGetSystemMetrics, LEN_OPCODES_HOOK_FUNCTION);
+	int ris = GetSystemMetrics(nIndex);
+	HookDynamicFunction("user32", "GetSystemMetrics", (funcpointer)HookGetSystemMetrics, OldHookGetSystemMetrics);
+
+	Message("  [GetSystemMetrics] ret: 0x%x\n", ris);
+	return ris;
+}
+
+
+unsigned char OldHookSetCursorPos[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL WINAPI HookSetCursorPos(
+	int X,
+	int Y
+)
+{
+	Message("SetCursorPos called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&X, 1))
+		S2EPrintExpression((UINT_PTR)X, "[SetCursorPos] 0: ");
+	else
+		Message("  [SetCursorPos] 0: 0x%x\n", X);
+	if (S2EIsSymbolic(&Y, 1))
+		S2EPrintExpression((UINT_PTR)Y, "[SetCursorPos] 1: ");
+	else
+		Message("  [SetCursorPos] 1: 0x%x\n", Y);
+#else
+	Message("  [SetCursorPos] 0: 0x%x\n", X);
+	Message("  [SetCursorPos] 1: 0x%x\n", Y);
+#endif
+
+	Message("  [SetCursorPos] ret: 0\n");
+	return 0;
+}
+
+
+unsigned char OldHookmouse_event[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+void WINAPI Hookmouse_event(
+	DWORD     dwFlags,
+	DWORD     dx,
+	DWORD     dy,
+	DWORD     dwData,
+	ULONG_PTR dwExtraInfo
+)
+{
+	Message("mouse_event called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&dwFlags, 1))
+		S2EPrintExpression((UINT_PTR)dwFlags, "[mouse_event] 0: ");
+	else
+		Message("  [mouse_event] 0: 0x%x\n", dwFlags);
+	if (S2EIsSymbolic(&dx, 1))
+		S2EPrintExpression((UINT_PTR)dx, "[mouse_event] 1: ");
+	else
+		Message("  [mouse_event] 1: 0x%x\n", dx);
+	if (S2EIsSymbolic(&dy, 1))
+		S2EPrintExpression((UINT_PTR)dy, "[mouse_event] 2: ");
+	else
+		Message("  [mouse_event] 2: 0x%x\n", dy);
+	if (S2EIsSymbolic(&dwData, 1))
+		S2EPrintExpression((UINT_PTR)dwData, "[mouse_event] 3: ");
+	else
+		Message("  [mouse_event] 3: 0x%x\n", dwData);
+	if (S2EIsSymbolic(&dwExtraInfo, 1))
+		S2EPrintExpression((UINT_PTR)dwExtraInfo, "[mouse_event] 4: ");
+	else
+		Message("  [mouse_event] 4: 0x%x\n", dwExtraInfo);
+#else
+	Message("  [mouse_event] 0: 0x%x\n", dwFlags);
+	Message("  [mouse_event] 1: 0x%x\n", dx);
+	Message("  [mouse_event] 2: 0x%x\n", dy);
+	Message("  [mouse_event] 3: 0x%x\n", dwData);
+	Message("  [mouse_event] 4: 0x%x\n", dwExtraInfo);
+#endif
+
+	RestoreData((LPVOID)mouse_event, OldHookmouse_event, LEN_OPCODES_HOOK_FUNCTION);
+	mouse_event(
+		dwFlags,
+		dx,
+		dy,
+		dwData,
+		dwExtraInfo
+	);
+	HookDynamicFunction("user32", "mouse_event", (funcpointer)Hookmouse_event, OldHookmouse_event);
+}
+
+
+unsigned char OldHookkeybd_event[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+void WINAPI Hookkeybd_event(
+	BYTE      bVk,
+	BYTE      bScan,
+	DWORD     dwFlags,
+	ULONG_PTR dwExtraInfo
+)
+{
+	Message("keybd_event called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&bVk, 1))
+		S2EPrintExpression((UINT_PTR)bVk, "[keybd_event] 0: ");
+	else
+		Message("  [keybd_event] 0: 0x%x\n", bVk);
+	if (S2EIsSymbolic(&bScan, 1))
+		S2EPrintExpression((UINT_PTR)bScan, "[keybd_event] 1: ");
+	else
+		Message("  [keybd_event] 1: 0x%x\n", bScan);
+	if (S2EIsSymbolic(&dwFlags, 1))
+		S2EPrintExpression((UINT_PTR)dwFlags, "[keybd_event] 2: ");
+	else
+		Message("  [keybd_event] 2: 0x%x\n", dwFlags);
+	if (S2EIsSymbolic(&dwExtraInfo, 1))
+		S2EPrintExpression((UINT_PTR)dwExtraInfo, "[keybd_event] 3: ");
+	else
+		Message("  [keybd_event] 3: 0x%x\n", dwExtraInfo);
+#else
+	Message("  [keybd_event] 0: 0x%x\n", bVk);
+	Message("  [keybd_event] 1: 0x%x\n", bScan);
+	Message("  [keybd_event] 2: 0x%x\n", dwFlags);
+	Message("  [keybd_event] 3: 0x%x\n", dwExtraInfo);
+#endif
+
+	RestoreData((LPVOID)keybd_event, OldHookkeybd_event, LEN_OPCODES_HOOK_FUNCTION);
+	keybd_event(
+		bVk,
+		bScan,
+		dwFlags,
+		dwExtraInfo
+	);
+	HookDynamicFunction("user32", "keybd_event", (funcpointer)Hookkeybd_event, OldHookkeybd_event);
+}
+
+
+unsigned char OldHookSetWindowTextA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL WINAPI HookSetWindowTextA(
+	HWND   hWnd,
+	LPCSTR lpString
+)
+{
+	Message("SetWindowTextA called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&hWnd, 1))
+		S2EPrintExpression((UINT_PTR)hWnd, "[SetWindowTextA] 0: ");
+	else
+		Message("  [SetWindowTextA] 0: 0x%x\n", hWnd);
+	if (S2EIsSymbolic(&lpString, 1))
+		S2EPrintExpression((UINT_PTR)lpString, "[SetWindowTextA] 1: ");
+	else {
+		Message("  [SetWindowTextA] 1: 0x%x\n", lpString);
+		if (S2EIsSymbolic((PVOID)lpString, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lpString), "[SetWindowTextA] *1: ");
+		else
+			Message("  [SetWindowTextA] *1: %s\n", lpString);
+	}
+#else
+	Message("  [SetWindowTextA] 0: 0x%x\n", hWnd);
+	Message("  [SetWindowTextA] 1: 0x%x\n", lpString);
+	Message("  [SetWindowTextA] *1: %s\n", lpString);
+#endif
+	RestoreData((LPVOID)SetWindowTextA, OldHookSetWindowTextA, LEN_OPCODES_HOOK_FUNCTION);
+	BOOL ris = SetWindowTextA(
+		hWnd,
+		lpString
+	);
+	HookDynamicFunction("user32", "SetWindowTextA", (funcpointer)HookSetWindowTextA, OldHookSetWindowTextA);
+
+	Message("  [SetWindowTextA] ret: 0x%x\n", ris);
+	return ris;
+}
+
+unsigned char OldHookShowWindow[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL WINAPI HookShowWindow(
+	HWND hWnd,
+	int  nCmdShow
+)
+{
+	Message("ShowWindow called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&hWnd, 1))
+		S2EPrintExpression((UINT_PTR)hWnd, "[ShowWindow] 0: ");
+	else
+		Message("  [ShowWindow] 0: 0x%x\n", hWnd);
+	if (S2EIsSymbolic(&nCmdShow, 1))
+		S2EPrintExpression((UINT_PTR)nCmdShow, "[ShowWindow] 1: ");
+	else
+		Message("  [ShowWindow] 1: 0x%x\n", nCmdShow);
+#else
+	Message("  [ShowWindow] 0: 0x%x\n", hWnd);
+	Message("  [ShowWindow] 1: 0x%x\n", nCmdShow);
+#endif
+
+	RestoreData((LPVOID)ShowWindow, OldHookShowWindow, LEN_OPCODES_HOOK_FUNCTION);
+	BOOL ris = ShowWindow(
+		hWnd,
+		nCmdShow
+	);
+	HookDynamicFunction("user32", "ShowWindow", (funcpointer)HookShowWindow, OldHookShowWindow);
+
+	Message("  [ShowWindow] ret: 0x%x\n", ris);
+	return ris;
+}
+
 
 unsigned char OldHookEnumWindows[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 BOOL WINAPI HookEnumWindows(

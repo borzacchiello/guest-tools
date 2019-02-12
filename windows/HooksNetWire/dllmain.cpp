@@ -229,9 +229,22 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		HookDynamicFunction("kernel32", "WinExec", (funcpointer)&HookWinExec, OldHookWinExec);
 		HookDynamicFunction("kernel32", "CreateToolhelp32Snapshot", (funcpointer)&HookCreateToolhelp32Snapshot, OldHookCreateToolhelp32Snapshot);
 		HookDynamicFunction("kernel32", "OpenProcess", (funcpointer)&HookOpenProcess, OldHookOpenProcess);
+		HookDynamicFunction("kernel32", "GetFileAttributesExA", (funcpointer)&HookGetFileAttributesExA, OldHookGetFileAttributesExA);
 
 		HookDynamicFunction("user32", "EnumWindows", (funcpointer)&HookEnumWindows, OldHookEnumWindows);
 		HookDynamicFunction("user32", "CreateWindowExA", (funcpointer)&HookCreateWindowExA, OldHookCreateWindowExA);
+		HookDynamicFunction("user32", "SetWindowTextA", (funcpointer)HookSetWindowTextA, OldHookSetWindowTextA);
+		HookDynamicFunction("user32", "ShowWindow", (funcpointer)HookShowWindow, OldHookShowWindow);
+		HookDynamicFunction("user32", "keybd_event", (funcpointer)Hookkeybd_event, OldHookkeybd_event);
+		HookDynamicFunction("user32", "mouse_event", (funcpointer)Hookmouse_event, OldHookmouse_event);
+		HookDynamicFunction("user32", "SetCursorPos", (funcpointer)HookSetCursorPos, OldHookSetCursorPos);
+		HookDynamicFunction("user32", "GetSystemMetrics", (funcpointer)HookGetSystemMetrics, OldHookGetSystemMetrics);
+		HookDynamicFunction("user32", "GetDesktopWindow", (funcpointer)HookGetDesktopWindow, OldHookGetDesktopWindow);
+		HookDynamicFunction("user32", "GetDC", (funcpointer)HookGetDC, OldHookGetDC);
+		HookDynamicFunction("user32", "SendMessageA", (funcpointer)HookSendMessageA, OldHookSendMessageA);
+
+		HookDynamicFunction("gdi32", "CreateCompatibleBitmap", (funcpointer)HookCreateCompatibleBitmap, OldHookCreateCompatibleBitmap);
+
 		HookDynamicFunction("msvcrt", "_beginthreadex", (funcpointer)&_beginthreadexHook, Old_beginthreadexHook);
 
 		HookDynamicFunction("secur32", "LsaGetLogonSessionData", (funcpointer)HookLsaGetLogonSessionData, OldHookLsaGetLogonSessionData);
