@@ -897,12 +897,100 @@ FILE *Hookfopen(
 	return 0;
 }
 
+unsigned char OldHookfclose[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+int Hookfclose(
+	FILE *stream
+)
+{
+	char* hex_stream = NULL;
+	Message("Hookfclose called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&stream, 1))
+		S2EPrintExpression((UINT_PTR)stream, "[Hookfclose] 0: ");
+	else {
+		Message("  [Hookfclose] 0: 0x%x\n", stream);
+		if (S2EIsSymbolic((PVOID)stream, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)stream), "[Hookfclose] *0: ");
+		else {
+			hex_stream = data_to_hex_string((char*)stream, sizeof(stream));
+			Message("  [Hookfclose] *0: %s\n", hex_stream);
+		}
+	}
+#else
+	Message("  [Hookfclose] 0: 0x%x\n", stream);
+	hex_stream = data_to_hex_string((char*)stream, sizeof(stream));
+	Message("  [Hookfclose] *0: %s\n", hex_stream);
+#endif
+	free(hex_stream);
+	Message("  [Hookfclose] ret: 0\n");
+	return 0;
+}
+
+unsigned char OldHookfwrite[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+size_t Hookfwrite(
+	const void *buffer,
+	size_t size,
+	size_t count,
+	FILE *stream
+)
+{
+	char* hex_buffer = NULL;
+	char* hex_stream = NULL;
+	Message("Hookfwrite called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&buffer, 1))
+		S2EPrintExpression((UINT_PTR)buffer, "[Hookfwrite] 0: ");
+	else {
+		Message("  [Hookfwrite] 0: 0x%x\n", buffer);
+		if (S2EIsSymbolic((PVOID)buffer, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)buffer), "[Hookfwrite] *0: ");
+		else {
+			hex_buffer = data_to_hex_string((char*)buffer, sizeof(buffer));
+			Message("  [Hookfwrite] *0: %s\n", hex_buffer);
+		}
+	}
+	if (S2EIsSymbolic(&size, 1))
+		S2EPrintExpression((UINT_PTR)size, "[Hookfwrite] 1: ");
+	else
+		Message("  [Hookfwrite] 1: 0x%x\n", size);
+	if (S2EIsSymbolic(&count, 1))
+		S2EPrintExpression((UINT_PTR)count, "[Hookfwrite] 2: ");
+	else
+		Message("  [Hookfwrite] 2: 0x%x\n", count);
+	if (S2EIsSymbolic(&stream, 1))
+		S2EPrintExpression((UINT_PTR)stream, "[Hookfwrite] 3: ");
+	else {
+		Message("  [Hookfwrite] 3: 0x%x\n", stream);
+		if (S2EIsSymbolic((PVOID)stream, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)stream), "[Hookfwrite] *3: ");
+		else {
+			hex_stream = data_to_hex_string((char*)stream, sizeof(stream));
+			Message("  [Hookfwrite] *3: %s\n", hex_stream);
+		}
+	}
+#else
+	Message("  [Hookfwrite] 0: 0x%x\n", buffer);
+	hex_buffer = data_to_hex_string((char*)buffer, sizeof(buffer));
+	Message("  [Hookfwrite] *0: %s\n", hex_buffer);
+	Message("  [Hookfwrite] 1: 0x%x\n", size);
+	Message("  [Hookfwrite] 2: 0x%x\n", count);
+	Message("  [Hookfwrite] 3: 0x%x\n", stream);
+	hex_stream = data_to_hex_string((char*)stream, sizeof(stream));
+	Message("  [Hookfwrite] *3: %s\n", hex_stream);
+#endif
+	free(hex_buffer);
+	free(hex_stream);
+	Message("  [Hookfwrite] ret: 0\n");
+	return 0;
+}
+
+
 // ************************************************************************************************************
 // SHELL32 ****************************************************************************************************
 
 
 unsigned char OldHookShellExecuteA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
-HINSTANCE HookShellExecuteA(
+HINSTANCE WINAPI HookShellExecuteA(
 	HWND   hwnd,
 	LPCSTR lpOperation,
 	LPCSTR lpFile,
@@ -979,7 +1067,7 @@ HINSTANCE HookShellExecuteA(
 // WINMM ******************************************************************************************************
 
 unsigned char OldHookwaveInOpen[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
-MMRESULT HookwaveInOpen(
+MMRESULT WINAPI HookwaveInOpen(
 	LPHWAVEIN       phwi,
 	UINT            uDeviceID,
 	LPCWAVEFORMATEX pwfx,
@@ -1051,6 +1139,104 @@ MMRESULT HookwaveInOpen(
 // ************************************************************************************************************
 // KERNEL32 ***************************************************************************************************
 
+unsigned char OldHookOpenProcess[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+HANDLE WINAPI HookOpenProcess(
+	DWORD dwDesiredAccess,
+	BOOL  bInheritHandle,
+	DWORD dwProcessId
+)
+{
+	Message("OpenProcess called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&dwDesiredAccess, 1))
+		S2EPrintExpression((UINT_PTR)dwDesiredAccess, "[OpenProcess] 0: ");
+	else
+		Message("  [OpenProcess] 0: 0x%x\n", dwDesiredAccess);
+	if (S2EIsSymbolic(&bInheritHandle, 1))
+		S2EPrintExpression((UINT_PTR)bInheritHandle, "[OpenProcess] 1: ");
+	else
+		Message("  [OpenProcess] 1: 0x%x\n", bInheritHandle);
+	if (S2EIsSymbolic(&dwProcessId, 1))
+		S2EPrintExpression((UINT_PTR)dwProcessId, "[OpenProcess] 2: ");
+	else
+		Message("  [OpenProcess] 2: 0x%x\n", dwProcessId);
+#else
+	Message("  [OpenProcess] 0: 0x%x\n", dwDesiredAccess);
+	Message("  [OpenProcess] 1: 0x%x\n", bInheritHandle);
+	Message("  [OpenProcess] 2: 0x%x\n", dwProcessId);
+#endif
+
+	Message("  [OpenProcess] ret: 0x%x\n", INVALID_HANDLE_VALUE);
+	return INVALID_HANDLE_VALUE;
+}
+
+unsigned char OldHookCreateToolhelp32Snapshot[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+HANDLE WINAPI HookCreateToolhelp32Snapshot(
+	DWORD dwFlags,
+	DWORD th32ProcessID
+)
+{
+	Message("CreateToolhelp32Snapshot called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&dwFlags, 1))
+		S2EPrintExpression((UINT_PTR)dwFlags, "[CreateToolhelp32Snapshot] 0: ");
+	else
+		Message("  [CreateToolhelp32Snapshot] 0: 0x%x\n", dwFlags);
+	if (S2EIsSymbolic(&th32ProcessID, 1))
+		S2EPrintExpression((UINT_PTR)th32ProcessID, "[CreateToolhelp32Snapshot] 1: ");
+	else
+		Message("  [CreateToolhelp32Snapshot] 1: 0x%x\n", th32ProcessID);
+#else
+	Message("  [CreateToolhelp32Snapshot] 0: 0x%x\n", dwFlags);
+	Message("  [CreateToolhelp32Snapshot] 1: 0x%x\n", th32ProcessID);
+#endif
+
+	Message("  [CreateToolhelp32Snapshot] ret: 0x%x\n", INVALID_HANDLE_VALUE);
+	return INVALID_HANDLE_VALUE;
+}
+
+
+unsigned char OldHookSleep[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+void WINAPI HookSleep(
+	DWORD dwMilliseconds
+)
+{
+	Message("HookSleep called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&dwMilliseconds, 1))
+		S2EPrintExpression((UINT_PTR)dwMilliseconds, "[HookSleep] 0: ");
+	else
+		Message("  [HookSleep] 0: 0x%x\n", dwMilliseconds);
+#else
+	Message("  [HookSleep] 0: 0x%x\n", dwMilliseconds);
+#endif
+
+}
+
+unsigned char OldHookSleepEx[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+DWORD WINAPI HookSleepEx(
+	DWORD dwMilliseconds,
+	BOOL  bAlertable
+)
+{
+	Message("HookSleepEx called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&dwMilliseconds, 1))
+		S2EPrintExpression((UINT_PTR)dwMilliseconds, "[HookSleepEx] 0: ");
+	else
+		Message("  [HookSleepEx] 0: 0x%x\n", dwMilliseconds);
+	if (S2EIsSymbolic(&bAlertable, 1))
+		S2EPrintExpression((UINT_PTR)bAlertable, "[HookSleepEx] 1: ");
+	else
+		Message("  [HookSleepEx] 1: 0x%x\n", bAlertable);
+#else
+	Message("  [HookSleepEx] 0: 0x%x\n", dwMilliseconds);
+	Message("  [HookSleepEx] 1: 0x%x\n", bAlertable);
+#endif
+
+	Message("  [HookSleepEx] ret: 0\n");
+	return 0;
+}
 
 unsigned char OldHookGetLocalTime[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 void WINAPI HookGetLocalTime(
@@ -1755,6 +1941,41 @@ HANDLE WINAPI HookCreateMutexA(
 // ************************************************************************************************************
 // USER 32 ****************************************************************************************************
 
+unsigned char OldHookEnumWindows[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL WINAPI HookEnumWindows(
+	WNDENUMPROC lpEnumFunc,
+	LPARAM      lParam
+)
+{
+	char* hex_lParam = NULL;
+	Message("HookEnumWindows called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&lpEnumFunc, 1))
+		S2EPrintExpression((UINT_PTR)lpEnumFunc, "[HookEnumWindows] 0: ");
+	else
+		Message("  [HookEnumWindows] 0: 0x%x\n", lpEnumFunc);
+	if (S2EIsSymbolic(&lParam, 1))
+		S2EPrintExpression((UINT_PTR)lParam, "[HookEnumWindows] 1: ");
+	else {
+		Message("  [HookEnumWindows] 1: 0x%x\n", lParam);
+		if (S2EIsSymbolic((PVOID)lParam, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)lParam), "[HookEnumWindows] *1: ");
+		else {
+			hex_lParam = data_to_hex_string((char*)lParam, sizeof(lParam));
+			Message("  [HookEnumWindows] *1: %s\n", hex_lParam);
+		}
+	}
+#else
+	Message("  [HookEnumWindows] 0: 0x%x\n", lpEnumFunc);
+	Message("  [HookEnumWindows] 1: 0x%x\n", lParam);
+	hex_lParam = data_to_hex_string((char*)lParam, sizeof(lParam));
+	Message("  [HookEnumWindows] *1: %s\n", hex_lParam);
+#endif
+	free(hex_lParam);
+	Message("  [HookEnumWindows] ret: 0\n");
+	return 0;
+}
+
 unsigned char OldHookCreateWindowExA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 HWND WINAPI HookCreateWindowExA(
 	DWORD     dwExStyle,
@@ -1973,3 +2194,148 @@ uintptr_t _beginthreadexHook(
 	return -1L;
 }
 
+// ************************************************************************************************************
+// SECUR32 ****************************************************************************************************
+
+unsigned char OldHookLsaGetLogonSessionData[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+ULONG WINAPI HookLsaGetLogonSessionData(
+	PLUID                        LogonId,
+	PSECURITY_LOGON_SESSION_DATA *ppLogonSessionData
+)
+{
+	char* hex_LogonId = NULL;
+	char* hex_ppLogonSessionData = NULL;
+	Message("LsaGetLogonSessionData called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&LogonId, 1))
+		S2EPrintExpression((UINT_PTR)LogonId, "[LsaGetLogonSessionData] 0: ");
+	else {
+		Message("  [LsaGetLogonSessionData] 0: 0x%x\n", LogonId);
+		if (S2EIsSymbolic((PVOID)LogonId, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)LogonId), "[HookLsaGetLogonSessionData] *0: ");
+		else {
+			hex_LogonId = data_to_hex_string((char*)LogonId, sizeof(LogonId));
+			Message("  [LsaGetLogonSessionData] *0: %s\n", hex_LogonId);
+		}
+	}
+	if (S2EIsSymbolic(&ppLogonSessionData, 1))
+		S2EPrintExpression((UINT_PTR)ppLogonSessionData, "[LsaGetLogonSessionData] 1: ");
+	else {
+		Message("  [LsaGetLogonSessionData] 1: 0x%x\n", ppLogonSessionData);
+		if (S2EIsSymbolic((PVOID)ppLogonSessionData, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)ppLogonSessionData), "[LsaGetLogonSessionData] *1: ");
+		else {
+			hex_ppLogonSessionData = data_to_hex_string((char*)ppLogonSessionData, sizeof(ppLogonSessionData));
+			Message("  [LsaGetLogonSessionData] *1: %s\n", hex_ppLogonSessionData);
+		}
+	}
+#else
+	Message("  [LsaGetLogonSessionData] 0: 0x%x\n", LogonId);
+	hex_LogonId = data_to_hex_string((char*)LogonId, sizeof(LogonId));
+	Message("  [LsaGetLogonSessionData] *0: %s\n", hex_LogonId);
+	Message("  [LsaGetLogonSessionData] 1: 0x%x\n", ppLogonSessionData);
+	hex_ppLogonSessionData = data_to_hex_string((char*)ppLogonSessionData, sizeof(ppLogonSessionData));
+	Message("  [LsaGetLogonSessionData] *1: %s\n", hex_ppLogonSessionData);
+#endif
+	free(hex_LogonId);
+	free(hex_ppLogonSessionData);
+
+	RestoreData(LsaGetLogonSessionData, OldHookLsaGetLogonSessionData, LEN_OPCODES_HOOK_FUNCTION);
+	ULONG ris = LsaGetLogonSessionData(
+		LogonId,
+		ppLogonSessionData
+	);
+	HookDynamicFunction("secur32", "LsaGetLogonSessionData", (funcpointer)HookLsaGetLogonSessionData, OldHookLsaGetLogonSessionData);
+
+	Message("  [LsaGetLogonSessionData] ret: 0x%x\n", ris);
+	return ris;
+}
+
+unsigned char OldHookLsaFreeReturnBuffer[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+ULONG WINAPI HookLsaFreeReturnBuffer(
+	PVOID Buffer
+)
+{
+	char* hex_Buffer = NULL;
+	Message("LsaFreeReturnBuffer called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&Buffer, 1))
+		S2EPrintExpression((UINT_PTR)Buffer, "[LsaFreeReturnBuffer] 0: ");
+	else {
+		Message("  [LsaFreeReturnBuffer] 0: 0x%x\n", Buffer);
+		if (S2EIsSymbolic((PVOID)Buffer, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)Buffer), "[LsaFreeReturnBuffer] *0: ");
+		else {
+			hex_Buffer = data_to_hex_string((char*)Buffer, sizeof(Buffer));
+			Message("  [LsaFreeReturnBuffer] *0: %s\n", hex_Buffer);
+		}
+	}
+#else
+	Message("  [LsaFreeReturnBuffer] 0: 0x%x\n", Buffer);
+	hex_Buffer = data_to_hex_string((char*)Buffer, sizeof(Buffer));
+	Message("  [LsaFreeReturnBuffer] *0: %s\n", hex_Buffer);
+#endif
+	free(hex_Buffer);
+
+	RestoreData(LsaFreeReturnBuffer, OldHookLsaFreeReturnBuffer, LEN_OPCODES_HOOK_FUNCTION);
+	ULONG ris = LsaFreeReturnBuffer(
+		Buffer
+	);
+	HookDynamicFunction("secur32", "LsaFreeReturnBuffer", (funcpointer)HookLsaFreeReturnBuffer, OldHookLsaFreeReturnBuffer);
+
+	Message("  [LsaFreeReturnBuffer] ret: 0x%x\n", ris);
+	return ris;
+}
+
+unsigned char OldHookLsaEnumerateLogonSessions[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+ULONG WINAPI HookLsaEnumerateLogonSessions(
+	PULONG LogonSessionCount,
+	PLUID  *LogonSessionList
+)
+{
+	char* hex_LogonSessionCount = NULL;
+	char* hex_LogonSessionList = NULL;
+	Message("LsaEnumerateLogonSessions called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&LogonSessionCount, 1))
+		S2EPrintExpression((UINT_PTR)LogonSessionCount, "[LsaEnumerateLogonSessions] 0: ");
+	else {
+		Message("  [LsaEnumerateLogonSessions] 0: 0x%x\n", LogonSessionCount);
+		if (S2EIsSymbolic((PVOID)LogonSessionCount, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)LogonSessionCount), "[LsaEnumerateLogonSessions] *0: ");
+		else {
+			hex_LogonSessionCount = data_to_hex_string((char*)LogonSessionCount, sizeof(LogonSessionCount));
+			Message("  [LsaEnumerateLogonSessions] *0: %s\n", hex_LogonSessionCount);
+		}
+	}
+	if (S2EIsSymbolic(&LogonSessionList, 1))
+		S2EPrintExpression((UINT_PTR)LogonSessionList, "[LsaEnumerateLogonSessions] 1: ");
+	else {
+		Message("  [LsaEnumerateLogonSessions] 1: 0x%x\n", LogonSessionList);
+		if (S2EIsSymbolic((PVOID)LogonSessionList, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)LogonSessionList), "[LsaEnumerateLogonSessions] *1: ");
+		else {
+			hex_LogonSessionList = data_to_hex_string((char*)LogonSessionList, sizeof(LogonSessionList));
+			Message("  [LsaEnumerateLogonSessions] *1: %s\n", hex_LogonSessionList);
+		}
+	}
+#else
+	Message("  [LsaEnumerateLogonSessions] 0: 0x%x\n", LogonSessionCount);
+	hex_LogonSessionCount = data_to_hex_string((char*)LogonSessionCount, sizeof(LogonSessionCount));
+	Message("  [LsaEnumerateLogonSessions] *0: %s\n", hex_LogonSessionCount);
+	Message("  [LsaEnumerateLogonSessions] 1: 0x%x\n", LogonSessionList);
+	hex_LogonSessionList = data_to_hex_string((char*)LogonSessionList, sizeof(LogonSessionList));
+	Message("  [LsaEnumerateLogonSessions] *1: %s\n", hex_LogonSessionList);
+#endif
+	free(hex_LogonSessionCount);
+	free(hex_LogonSessionList);
+
+	RestoreData(LsaEnumerateLogonSessions, OldHookLsaEnumerateLogonSessions, LEN_OPCODES_HOOK_FUNCTION);
+	ULONG ris = LsaEnumerateLogonSessions(
+		LogonSessionCount,
+		LogonSessionList
+	);
+	HookDynamicFunction("secur32", "LsaEnumerateLogonSessions", (funcpointer)HookLsaEnumerateLogonSessions, OldHookLsaEnumerateLogonSessions);
+	Message("  [LsaEnumerateLogonSessions] ret: 0x%x\n", ris);
+	return ris;
+}

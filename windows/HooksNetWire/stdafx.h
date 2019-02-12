@@ -7,7 +7,7 @@
 
 #include "targetver.h"
 
-#define S2E 01
+#define S2E 1
 
 #define WIN32_LEAN_AND_MEAN             // Escludere gli elementi usati raramente dalle intestazioni di Windows
 // File di intestazione di Windows

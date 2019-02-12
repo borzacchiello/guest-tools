@@ -45,9 +45,10 @@ long long myTime() {
 	// long long ris;
 	// S2EMakeConcolic(&ris, sizeof(long long), "time");
 	// return ris;
-	return 0;
+	// return 0;
+	return 1549763150;
 #else
-	return 0;
+	return 1549763150;
 #endif
 }
 
@@ -200,11 +201,16 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		HookDynamicFunction("advapi32", "RegCloseKey", (funcpointer)&HookRegCloseKey, OldHookRegCloseKey);
 
 		HookDynamicFunction("msvcrt", "fopen", (funcpointer)Hookfopen, OldHookfopen);
+		HookDynamicFunction("msvcrt", "fclose", (funcpointer)Hookfclose, OldHookfclose);
+		HookDynamicFunction("msvcrt", "fwrite", (funcpointer)Hookfwrite, OldHookfwrite);
 
 		HookDynamicFunction("winmm", "waveInOpen", (funcpointer)HookwaveInOpen, OldHookwaveInOpen);
 
-		// HookDynamicFunction("kernel32", "GetLocalTime", (funcpointer)HookGetLocalTime, OldHookGetLocalTime);
 		HookDynamicFunction("shell32", "ShellExecuteA", (funcpointer)HookShellExecuteA, OldHookShellExecuteA);
+
+		HookDynamicFunction("kernel32", "Sleep", (funcpointer)HookSleep, OldHookSleep);
+		HookDynamicFunction("kernel32", "SleepEx", (funcpointer)HookSleepEx, OldHookSleepEx);
+		// HookDynamicFunction("kernel32", "GetLocalTime", (funcpointer)HookGetLocalTime, OldHookGetLocalTime);
 		HookDynamicFunction("kernel32", "CreatePipe", (funcpointer)HookCreatePipe, OldHookCreatePipe);
 		HookDynamicFunction("kernel32", "GetCommandLineA", (funcpointer)HookGetCommandLineA, OldHookGetCommandLineA);
 		HookDynamicFunction("kernel32", "CreateProcessA", (funcpointer)&HookCreateProcessA, OldHookCreateProcessA);
@@ -221,9 +227,16 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		HookDynamicFunction("kernel32", "GetDriveTypeA", (funcpointer)&HookGetDriveTypeA, OldHookGetDriveTypeA);
 		HookDynamicFunction("kernel32", "GetLogicalDrives", (funcpointer)&HookGetLogicalDrives, OldHookGetLogicalDrives);
 		HookDynamicFunction("kernel32", "WinExec", (funcpointer)&HookWinExec, OldHookWinExec);
+		HookDynamicFunction("kernel32", "CreateToolhelp32Snapshot", (funcpointer)&HookCreateToolhelp32Snapshot, OldHookCreateToolhelp32Snapshot);
+		HookDynamicFunction("kernel32", "OpenProcess", (funcpointer)&HookOpenProcess, OldHookOpenProcess);
 
+		HookDynamicFunction("user32", "EnumWindows", (funcpointer)&HookEnumWindows, OldHookEnumWindows);
 		HookDynamicFunction("user32", "CreateWindowExA", (funcpointer)&HookCreateWindowExA, OldHookCreateWindowExA);
 		HookDynamicFunction("msvcrt", "_beginthreadex", (funcpointer)&_beginthreadexHook, Old_beginthreadexHook);
+
+		HookDynamicFunction("secur32", "LsaGetLogonSessionData", (funcpointer)HookLsaGetLogonSessionData, OldHookLsaGetLogonSessionData);
+		HookDynamicFunction("secur32", "LsaFreeReturnBuffer", (funcpointer)HookLsaFreeReturnBuffer, OldHookLsaFreeReturnBuffer);
+		HookDynamicFunction("secur32", "LsaEnumerateLogonSessions", (funcpointer)HookLsaEnumerateLogonSessions, OldHookLsaEnumerateLogonSessions);
 
 		Message("Hooks done.\n");
 	}

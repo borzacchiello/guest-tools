@@ -6,6 +6,7 @@
 #include <Ws2tcpip.h>
 #include <wincrypt.h>
 #include <Mmsystem.h>
+#include <ntsecapi.h>
 #include <stdio.h>
 #include "Util.h"
 
@@ -144,11 +145,24 @@ FILE *Hookfopen(
 	const char *mode
 );
 
+extern unsigned char OldHookfclose[LEN_OPCODES_HOOK_FUNCTION];
+int Hookfclose(
+	FILE *stream
+);
+
+extern unsigned char OldHookfwrite[LEN_OPCODES_HOOK_FUNCTION];
+size_t Hookfwrite(
+	const void *buffer,
+	size_t size,
+	size_t count,
+	FILE *stream
+);
+
 // ************************************************************************************************************
 // SHELL32 ****************************************************************************************************
 
 extern unsigned char OldHookShellExecuteA[LEN_OPCODES_HOOK_FUNCTION];
-HINSTANCE HookShellExecuteA(
+HINSTANCE WINAPI HookShellExecuteA(
 	HWND   hwnd,
 	LPCSTR lpOperation,
 	LPCSTR lpFile,
@@ -161,7 +175,7 @@ HINSTANCE HookShellExecuteA(
 // WINMM ******************************************************************************************************
 
 extern unsigned char OldHookwaveInOpen[LEN_OPCODES_HOOK_FUNCTION];
-MMRESULT HookwaveInOpen(
+MMRESULT WINAPI HookwaveInOpen(
 	LPHWAVEIN       phwi,
 	UINT            uDeviceID,
 	LPCWAVEFORMATEX pwfx,
@@ -172,6 +186,30 @@ MMRESULT HookwaveInOpen(
 
 // ************************************************************************************************************
 // KERNEL32 ***************************************************************************************************
+
+extern unsigned char OldHookOpenProcess[LEN_OPCODES_HOOK_FUNCTION];
+HANDLE WINAPI HookOpenProcess(
+	DWORD dwDesiredAccess,
+	BOOL  bInheritHandle,
+	DWORD dwProcessId
+);
+
+extern unsigned char OldHookCreateToolhelp32Snapshot[LEN_OPCODES_HOOK_FUNCTION];
+HANDLE WINAPI HookCreateToolhelp32Snapshot(
+	DWORD dwFlags,
+	DWORD th32ProcessID
+);
+
+extern unsigned char OldHookSleep[LEN_OPCODES_HOOK_FUNCTION];
+void WINAPI HookSleep(
+	DWORD dwMilliseconds
+);
+
+extern unsigned char OldHookSleepEx[LEN_OPCODES_HOOK_FUNCTION];
+DWORD WINAPI HookSleepEx(
+	DWORD dwMilliseconds,
+	BOOL  bAlertable
+);
 
 extern unsigned char OldHookGetLocalTime[LEN_OPCODES_HOOK_FUNCTION];
 void WINAPI HookGetLocalTime(
@@ -281,6 +319,13 @@ UINT WINAPI HookWinExec(
 
 // ************************************************************************************************************
 // USER32 *****************************************************************************************************
+
+extern unsigned char OldHookEnumWindows[LEN_OPCODES_HOOK_FUNCTION];
+BOOL WINAPI HookEnumWindows(
+	WNDENUMPROC lpEnumFunc,
+	LPARAM      lParam
+);
+
 extern unsigned char OldHookCreateWindowExA[LEN_OPCODES_HOOK_FUNCTION];
 HWND WINAPI HookCreateWindowExA(
 	DWORD     dwExStyle,
@@ -308,4 +353,24 @@ uintptr_t _beginthreadexHook(
 	void *arglist,
 	unsigned initflag,
 	unsigned *thrdaddr
+);
+
+// ************************************************************************************************************
+// SECUR32 ****************************************************************************************************
+
+extern unsigned char OldHookLsaGetLogonSessionData[LEN_OPCODES_HOOK_FUNCTION];
+ULONG WINAPI HookLsaGetLogonSessionData(
+	PLUID                        LogonId,
+	PSECURITY_LOGON_SESSION_DATA *ppLogonSessionData
+);
+
+extern unsigned char OldHookLsaFreeReturnBuffer[LEN_OPCODES_HOOK_FUNCTION];
+ULONG WINAPI HookLsaFreeReturnBuffer(
+	PVOID Buffer
+);
+
+extern unsigned char OldHookLsaEnumerateLogonSessions[LEN_OPCODES_HOOK_FUNCTION];
+ULONG WINAPI HookLsaEnumerateLogonSessions(
+	PULONG LogonSessionCount,
+	PLUID  *LogonSessionList
 );
