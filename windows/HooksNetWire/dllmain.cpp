@@ -27,6 +27,8 @@ extern "C" {
 #define FREE_ADDR 0x040F530
 #define TIME_ADDR 0x40F5A8
 
+#define SLEEP_ADDR 0x040F428 
+
 #define ADDR_END_SWITCH 0x0401F9A
 
 #define ADDR_CREATE_DIRECTORY 0x040F400
@@ -177,6 +179,9 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		// HookFunction((funcpointer)ADDR_AVOID_2, (funcpointer)exit_stub, oldExit_stub);
 		HookInstruction((funcpointer)ADDR_AFTER_INIT, (funcpointer)hook_after_init, (funcpointer)ADDR_AFTER_INIT, oldHook_after_init);	
 #endif
+
+		HookFunction((funcpointer)SLEEP_ADDR, (funcpointer)HookSleep, OldHookSleep);
+
 		HookDynamicFunction("ws2_32", "WSAStartup", (funcpointer)WSAStartupHook, oldWSAStartupHook);
 		HookDynamicFunction("ws2_32", "getaddrinfo", (funcpointer)getaddrinfoHook, oldGetaddrinfoHook);
 		HookDynamicFunction("ws2_32", "socket", (funcpointer)socketHook, oldSocketHook);
@@ -205,6 +210,9 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		HookDynamicFunction("msvcrt", "fwrite", (funcpointer)Hookfwrite, OldHookfwrite);
 
 		HookDynamicFunction("winmm", "waveInOpen", (funcpointer)HookwaveInOpen, OldHookwaveInOpen);
+		HookDynamicFunction("winmm", "waveInGetNumDevs", (funcpointer)HookwaveInGetNumDevs, OldHookwaveInGetNumDevs);
+		HookDynamicFunction("winmm", "waveInGetDevCapsA", (funcpointer)HookwaveInGetDevCapsA, OldHookwaveInGetDevCapsA);
+		HookDynamicFunction("winmm", "waveInStop", (funcpointer)HookwaveInStop, OldHookwaveInStop);
 
 		HookDynamicFunction("shell32", "ShellExecuteA", (funcpointer)HookShellExecuteA, OldHookShellExecuteA);
 

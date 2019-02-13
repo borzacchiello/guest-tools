@@ -174,6 +174,21 @@ HINSTANCE WINAPI HookShellExecuteA(
 // ************************************************************************************************************
 // WINMM ******************************************************************************************************
 
+extern unsigned char OldHookwaveInStop[LEN_OPCODES_HOOK_FUNCTION];
+MMRESULT WINAPI HookwaveInStop(
+	HWAVEIN hwi
+);
+
+extern unsigned char OldHookwaveInGetDevCapsA[LEN_OPCODES_HOOK_FUNCTION];
+MMRESULT WINAPI HookwaveInGetDevCapsA(
+	UINT_PTR      uDeviceID,
+	LPWAVEINCAPSA pwic,
+	UINT          cbwic
+);
+
+extern unsigned char OldHookwaveInGetNumDevs[LEN_OPCODES_HOOK_FUNCTION];
+UINT WINAPI HookwaveInGetNumDevs();
+
 extern unsigned char OldHookwaveInOpen[LEN_OPCODES_HOOK_FUNCTION];
 MMRESULT WINAPI HookwaveInOpen(
 	LPHWAVEIN       phwi,

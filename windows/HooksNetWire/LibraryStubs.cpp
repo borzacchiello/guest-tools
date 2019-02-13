@@ -1136,6 +1136,95 @@ MMRESULT WINAPI HookwaveInOpen(
 	return MMSYSERR_NODRIVER;
 }
 
+unsigned char OldHookwaveInGetNumDevs[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+UINT WINAPI HookwaveInGetNumDevs()
+{
+	Message("waveInGetNumDevs called by 0x%x.\n", _ReturnAddress());
+
+	RestoreData(waveInGetNumDevs, OldHookwaveInGetNumDevs, LEN_OPCODES_HOOK_FUNCTION);
+	UINT ris = waveInGetNumDevs();
+	HookDynamicFunction("winmm", "waveInGetNumDevs", (funcpointer)HookwaveInGetNumDevs, OldHookwaveInGetNumDevs);
+
+	Message("  [waveInGetNumDevs] ret: 0x%x\n", ris);
+	return ris;
+}
+
+unsigned char OldHookwaveInGetDevCapsA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+MMRESULT WINAPI HookwaveInGetDevCapsA(
+	UINT_PTR     uDeviceID,
+	LPWAVEINCAPSA pwic,
+	UINT         cbwic
+)
+{
+	char* hex_pwic = NULL;
+	Message("waveInGetDevCapsA called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&uDeviceID, 1))
+		S2EPrintExpression((UINT_PTR)uDeviceID, "[waveInGetDevCapsA] 0: ");
+	else
+		Message("  [waveInGetDevCapsA] 0: 0x%x\n", uDeviceID);
+	if (S2EIsSymbolic(&pwic, 1))
+		S2EPrintExpression((UINT_PTR)pwic, "[waveInGetDevCapsA] 1: ");
+	else {
+		Message("  [waveInGetDevCapsA] 1: 0x%x\n", pwic);
+		if (S2EIsSymbolic((PVOID)pwic, 1))
+			S2EPrintExpression((UINT_PTR)*((char*)pwic), "[waveInGetDevCapsA] *1: ");
+		else {
+			hex_pwic = data_to_hex_string((char*)pwic, sizeof(pwic));
+			Message("  [waveInGetDevCapsA] *1: %s\n", hex_pwic);
+		}
+	}
+	if (S2EIsSymbolic(&cbwic, 1))
+		S2EPrintExpression((UINT_PTR)cbwic, "[waveInGetDevCapsA] 2: ");
+	else
+		Message("  [waveInGetDevCapsA] 2: 0x%x\n", cbwic);
+#else
+	Message("  [waveInGetDevCapsA] 0: 0x%x\n", uDeviceID);
+	Message("  [waveInGetDevCapsA] 1: 0x%x\n", pwic);
+	hex_pwic = data_to_hex_string((char*)pwic, sizeof(pwic));
+	Message("  [waveInGetDevCapsA] *1: %s\n", hex_pwic);
+	Message("  [waveInGetDevCapsA] 2: 0x%x\n", cbwic);
+#endif
+	free(hex_pwic);
+
+	RestoreData(waveInGetDevCapsA, OldHookwaveInGetDevCapsA, LEN_OPCODES_HOOK_FUNCTION);
+	MMRESULT ris = waveInGetDevCapsA(
+		uDeviceID,
+		pwic,
+		cbwic
+	);
+	HookDynamicFunction("winmm", "waveInGetDevCapsA", (funcpointer)HookwaveInGetDevCapsA, OldHookwaveInGetDevCapsA);
+
+	Message("  [waveInGetDevCapsA] ret: 0x%x\n", ris);
+	return ris;
+}
+
+unsigned char OldHookwaveInStop[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+MMRESULT WINAPI HookwaveInStop(
+	HWAVEIN hwi
+)
+{
+	Message("waveInStop called by 0x%x.\n", _ReturnAddress());
+#if S2E
+	if (S2EIsSymbolic(&hwi, 1))
+		S2EPrintExpression((UINT_PTR)hwi, "[waveInStop] 0: ");
+	else
+		Message("  [waveInStop] 0: 0x%x\n", hwi);
+#else
+	Message("  [waveInStop] 0: 0x%x\n", hwi);
+#endif
+
+	RestoreData(waveInStop, OldHookwaveInStop, LEN_OPCODES_HOOK_FUNCTION);
+	MMRESULT ris = waveInStop(hwi);
+	HookDynamicFunction("winmm", "waveInStop", (funcpointer)HookwaveInStop, OldHookwaveInStop);
+
+	Message("  [waveInStop] ret: 0x%x\n", ris);
+	return ris;
+}
+
+
+
+
 // ************************************************************************************************************
 // KERNEL32 ***************************************************************************************************
 
