@@ -74,7 +74,7 @@ unsigned char oldInterceptVirtualAlloc[18] = { 0 };
 static void InterceptVirtualAlloc(unsigned long eax, unsigned long ebx, unsigned long ecx,
 	unsigned long edx, unsigned long edi, unsigned long esi)
 {
-	address_t1 = eax;
+	address_t1 = THREAD_ADDRESS;// eax;
 #if ENFAL_PLUGIN
 	EnfalGuestCommand command;
 	command.cmd = NOTIFY_THREAD_ADDRESS;
@@ -136,6 +136,8 @@ static void ThreadDispatch(unsigned long eax, unsigned long ebx, unsigned long e
 	HookDynamicFunction("kernel32", "MoveFileA", (funcpointer)&HookMoveFileA, OldHookMoveFileA);
 	HookDynamicFunction("kernel32", "DeleteFileA", (funcpointer)&HookDeleteFileA, OldHookDeleteFileA);
 	HookDynamicFunction("kernel32", "CreateFileA", (funcpointer)&HookCreateFileA, OldHookCreateFileA);
+	HookDynamicFunction("kernel32", "CreateThread", (funcpointer)&HookCreateThread, OldHookCreateThread);
+	HookDynamicFunction("kernel32", "TerminateThread", (funcpointer)&HookTerminateThread, OldHookTerminateThread);
 	// HookDynamicFunction("kernel32", "CloseHandle", (funcpointer)&HookCloseHandle, OldHookCloseHandle);
 
 	HookDynamicFunction("kernel32", "GetDriveTypeA", (funcpointer)&HookGetDriveTypeA, OldHookGetDriveTypeA);
@@ -207,6 +209,7 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 			(funcpointer)ADDRESS_HOOK_THREAD, oldWriteThreadHook);
 		HookDynamicFunction("advapi32", "RegSetValueExA", (funcpointer)&HookSetReg_prethread, oldSetReg_prethread);
 		HookDynamicFunction("advapi32", "RegCloseKey", (funcpointer)&HookCloseReg_prethread, oldCloseReg_prethread);
+		HookDynamicFunction("kernel32", "CreateRemoteThread", (funcpointer)HookCreateRemoteThread, OldHookCreateRemoteThread);
 
 		Message("Patch completed\n");
 		executed = true;

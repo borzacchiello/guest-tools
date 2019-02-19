@@ -151,7 +151,7 @@ BOOL WINAPI HookInternetReadFile(
 		char buff[50];
 		char* inbuff = (char*)lpBuffer;
 		sprintf(buff, "InternetReadFile_%d", callCounter);
-		S2EMakeConcolic(inbuff, dwNumberOfBytesToRead, buff);   // passing a stack variable should be safe
+		S2EMakeConcolic(inbuff, 20, buff);   // passing a stack variable should be safe
 		// S2EAssume(inbuff[8] == (80 ^ 0x45)); // otherwise, symbolic write...
 	// }
 	callCounter++;
@@ -207,6 +207,65 @@ LSTATUS WINAPI HookRegCloseKey(
 
 // ************************************************************************************************************
 // KERNEL32 ***************************************************************************************************
+
+bool flag = true;
+unsigned char OldHookCreateRemoteThread[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+HANDLE WINAPI HookCreateRemoteThread(
+	HANDLE                 hProcess,
+	LPSECURITY_ATTRIBUTES  lpThreadAttributes,
+	SIZE_T                 dwStackSize,
+	LPTHREAD_START_ROUTINE lpStartAddress,
+	LPVOID                 lpParameter,
+	DWORD                  dwCreationFlags,
+	LPDWORD                lpThreadId
+) {
+	Message("Intercepted CreateRemoteThread.\n");
+	if (flag) {
+		flag = false;
+		RestoreData(CreateRemoteThread, OldHookCreateRemoteThread, LEN_OPCODES_HOOK_FUNCTION);
+		HANDLE ris = CreateRemoteThread(
+			hProcess,
+			lpThreadAttributes,
+			dwStackSize,
+			(LPTHREAD_START_ROUTINE)THREAD_ADDRESS,
+			lpParameter,
+			dwCreationFlags,
+			lpThreadId
+		);
+		HookDynamicFunction("kernel32", "CreateRemoteThread", (funcpointer)HookCreateRemoteThread, OldHookCreateRemoteThread);
+		Message("RemoteThread, modified start address parameter");
+		return ris;
+	}
+	Message("RemoteThread, failing");
+	return INVALID_HANDLE_VALUE;
+}
+
+
+unsigned char OldHookTerminateThread[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+BOOL WINAPI HookTerminateThread(
+	HANDLE hThread,
+	DWORD  dwExitCode
+) 
+{
+	Message("TerminateThread called.\n");
+	return 0;
+}
+
+
+unsigned char OldHookCreateThread[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
+HANDLE WINAPI HookCreateThread(
+	LPSECURITY_ATTRIBUTES   lpThreadAttributes,
+	SIZE_T                  dwStackSize,
+	LPTHREAD_START_ROUTINE  lpStartAddress,
+	__drv_aliasesMem LPVOID lpParameter,
+	DWORD                   dwCreationFlags,
+	LPDWORD                 lpThreadId
+) 
+{
+	Message("CreateThread with function at 0x%x called.\n", lpStartAddress);
+	return INVALID_HANDLE_VALUE; // fail
+}
+
 
 unsigned char OldHookFindFirstFileA[LEN_OPCODES_HOOK_FUNCTION] = { 0 };
 HANDLE WINAPI HookFindFirstFileA(

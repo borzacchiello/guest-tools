@@ -4,6 +4,8 @@
 #include <WinInet.h>
 #include <winsock.h>
 
+#define THREAD_ADDRESS 0x402BB0
+
 // WININET ****************************************************************************************************
 extern unsigned char oldHookInternetOpenA[LEN_OPCODES_HOOK_FUNCTION];
 HINTERNET WINAPI HookInternetOpenA(
@@ -69,6 +71,7 @@ BOOL WINAPI HookInternetReadFile(
 );
 // ************************************************************************************************************
 // ADVAPI32 ***************************************************************************************************
+
 extern unsigned char OldHookRegOpenKeyExA[LEN_OPCODES_HOOK_FUNCTION];
 LSTATUS WINAPI HookRegOpenKeyExA(
 	HKEY   hKey,
@@ -94,6 +97,34 @@ LSTATUS WINAPI HookRegCloseKey(
 );
 // ************************************************************************************************************
 // KERNEL32 ***************************************************************************************************
+
+extern unsigned char OldHookCreateRemoteThread[LEN_OPCODES_HOOK_FUNCTION];
+HANDLE WINAPI HookCreateRemoteThread(
+	HANDLE                 hProcess,
+	LPSECURITY_ATTRIBUTES  lpThreadAttributes,
+	SIZE_T                 dwStackSize,
+	LPTHREAD_START_ROUTINE lpStartAddress,
+	LPVOID                 lpParameter,
+	DWORD                  dwCreationFlags,
+	LPDWORD                lpThreadId
+);
+
+extern unsigned char OldHookCreateThread[LEN_OPCODES_HOOK_FUNCTION];
+HANDLE WINAPI HookCreateThread(
+	LPSECURITY_ATTRIBUTES   lpThreadAttributes,
+	SIZE_T                  dwStackSize,
+	LPTHREAD_START_ROUTINE  lpStartAddress,
+	__drv_aliasesMem LPVOID lpParameter,
+	DWORD                   dwCreationFlags,
+	LPDWORD                 lpThreadId
+);
+
+extern unsigned char OldHookTerminateThread[LEN_OPCODES_HOOK_FUNCTION];
+BOOL WINAPI HookTerminateThread(
+	HANDLE hThread,
+	DWORD  dwExitCode
+);
+
 extern unsigned char OldHookFindFirstFileA[LEN_OPCODES_HOOK_FUNCTION];
 HANDLE WINAPI HookFindFirstFileA(
 	LPCSTR             lpFileName,
